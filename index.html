@@ -46,14 +46,15 @@ body::before{
 }
 @keyframes twinkle{0%{opacity:.6}100%{opacity:1}}
 
-#app{max-width:430px;margin:0 auto;min-height:100vh;padding-bottom:calc(72px + var(--safe-bot));position:relative;z-index:1;}
+#app{max-width:430px;margin:0 auto;min-height:100vh;padding-bottom:calc(72px + var(--safe-bot));padding-top:0;position:relative;z-index:1;}
 
 /* HEADER */
 #header{
   background:linear-gradient(180deg,#0a1520,#0d1b2a);
   border-bottom:3px solid var(--gold2);
   box-shadow:0 3px 0 var(--shadow),0 0 20px rgba(255,170,0,.15);
-  padding:calc(var(--safe-top)+10px) 14px 10px;
+  padding-top:calc(var(--safe-top) + 8px) !important;
+  padding:calc(var(--safe-top)+44px) 14px 10px;
   position:sticky;top:0;z-index:100;
   display:flex;align-items:center;gap:10px;
 }
@@ -318,6 +319,7 @@ body::before{
     <h1>CONTROL DE<br>GASTOS</h1>
     <p>★ ALDEA NOCTURNA ★</p>
   </div>
+  <div id="sync-badge" style="position:absolute;top:calc(var(--safe-top)+6px);left:50%;transform:translateX(-50%);font-size:6px;color:var(--cyan);opacity:0;transition:opacity 0.3s;white-space:nowrap;text-shadow:0 0 6px rgba(64,224,208,0.5);"></div>
   <div class="h-bal">
     <div class="hbn" id="h-bal">$0</div>
     <div class="hbl">saldo</div>
@@ -534,6 +536,11 @@ if (monto > 0) {
       </div>
     </div>
 
+    <button class="report-btn" onclick="pullFromSheets()" style="border-color:var(--cyan);color:var(--cyan)">
+      🔄 SINCRONIZAR CON GOOGLE SHEETS
+      <span>Trae todas las transacciones automáticas de Apple Pay registradas en Google Sheets.</span>
+    </button>
+
     <button class="report-btn" onclick="exportCSV()">
       📊 EXPORTAR CSV (abrir en Excel)
       <span>Descarga todas tus transacciones en formato CSV, listo para abrir en Excel o Numbers con el dashboard completo.</span>
@@ -577,8 +584,84 @@ const catMap={};[...EC,...IC,...SC].forEach(c=>catMap[c.id]=c);
 let txs=[],selMonth=cmk(),curView='dashboard',formType='expense',formCat='';
 
 // ── STORAGE ──────────────────────────────────────────────
-function save(){try{localStorage.setItem('cdg_main',JSON.stringify(txs));}catch(e){}}
-function load(){try{const d=localStorage.getItem('cdg_main');if(d)txs=JSON.parse(d);}catch(e){}}
+const SHEETS_URL = 'https://script.google.com/macros/s/AKfycbyxmmUpgErY9QbDbYa9MJRl4JQBTEl-AQUtkvBsC9-066LJYAPZGNYcx1-J0kllTiox/exec';
+let syncPending = false;
+
+function save(){
+  try{localStorage.setItem('cdg_main',JSON.stringify(txs));}catch(e){}
+}
+
+function load(){
+  try{
+    const d=localStorage.getItem('cdg_main');
+    if(d)txs=JSON.parse(d);
+  }catch(e){}
+}
+
+// Push a single new transaction to Google Sheets
+async function pushToSheets(tx){
+  try{
+    const params = new URLSearchParams({
+      action:'add',
+      id: tx.id,
+      fecha: tx.date,
+      comercio: tx.note||'',
+      monto: tx.amount,
+      tarjeta: tx.card||'',
+      categoria: tx.category,
+      tipo: tx.type,
+      mk: tx.mk,
+      auto: tx.auto?'1':'0'
+    });
+    await fetch(SHEETS_URL+'?'+params.toString(),{method:'GET',mode:'no-cors'});
+  }catch(e){console.log('Sheets sync error:',e);}
+}
+
+// Pull ALL transactions from Google Sheets and merge with local
+async function pullFromSheets(){
+  try{
+    showSyncBadge('⟳ Sincronizando...');
+    const res = await fetch(SHEETS_URL+'?action=get',{method:'GET'});
+    const data = await res.json();
+    if(data.status==='ok' && Array.isArray(data.data) && data.data.length>0){
+      // Merge: sheets data wins for auto transactions
+      const sheetsIds = new Set(data.data.map(r=>String(r.id)));
+      const localManual = txs.filter(t=>!t.auto && !sheetsIds.has(String(t.id)));
+      const sheetsAsTx = data.data.map(r=>{
+        return {
+          id: parseInt(r.id)||Date.now(),
+          type: r.tipo||'expense',
+          category: r.categoria||'otros',
+          amount: parseFloat(r.monto)||0,
+          note: r.comercio||'',
+          card: r.tarjeta||'',
+          date: r.fecha||new Date().toISOString().slice(0,10),
+          mk: r.mk||r.fecha?.slice(0,7)||'',
+          auto: r.auto==='1'||r.auto===true
+        };
+      });
+      txs = [...sheetsAsTx, ...localManual].sort((a,b)=>b.id-a.id);
+      save();
+      render();
+      showSyncBadge('✅ Sincronizado');
+    } else {
+      showSyncBadge('✅ Sin cambios');
+    }
+  }catch(e){
+    showSyncBadge('⚠️ Sin conexión');
+    console.log('Pull error:',e);
+  }
+}
+
+let syncBadgeTimer;
+function showSyncBadge(msg){
+  const el=document.getElementById('sync-badge');
+  if(!el)return;
+  el.textContent=msg;
+  el.style.opacity='1';
+  clearTimeout(syncBadgeTimer);
+  syncBadgeTimer=setTimeout(()=>el.style.opacity='0',3000);
+}
 
 // ── NOTIFY ───────────────────────────────────────────────
 let nt;
@@ -630,8 +713,10 @@ function addTx(){
   const card=document.getElementById('i-card').value;
   const date=document.getElementById('i-date').value;
   if(!formCat||!amt||amt<=0){notify('¡Completa todos los campos! 🌙','var(--red2)');return;}
-  txs.unshift({id:Date.now(),type:formType,category:formCat,amount:amt,note,card,date,mk:date.slice(0,7),auto:false});
+  const newTx={id:Date.now(),type:formType,category:formCat,amount:amt,note,card,date,mk:date.slice(0,7),auto:false};
+  txs.unshift(newTx);
   save();
+  pushToSheets(newTx);
   document.getElementById('i-amt').value='';
   document.getElementById('i-note').value='';
   document.getElementById('i-card').value='';
@@ -671,10 +756,11 @@ function doTransfer(){
   const today=new Date().toISOString().slice(0,10);
   const mk=today.slice(0,7);
   // Debit from savings category
-  txs.unshift({id:Date.now(),type:'transfer_out',category:cat,amount:amt,note:`Retiro: ${note}`,date:today,mk,auto:false});
-  // Credit to available balance
-  txs.unshift({id:Date.now()+1,type:'income',category:'transfer_in',amount:amt,note:`💸 Desde ahorros (${SC.find(c=>c.id===cat)?.l||cat}): ${note}`,date:today,mk,auto:false});
+  const tx1={id:Date.now(),type:'transfer_out',category:cat,amount:amt,note:`Retiro: ${note}`,date:today,mk,auto:false};
+  const tx2={id:Date.now()+1,type:'income',category:'transfer_in',amount:amt,note:`💸 Desde ahorros (${SC.find(c=>c.id===cat)?.l||cat}): ${note}`,date:today,mk,auto:false};
+  txs.unshift(tx1);txs.unshift(tx2);
   save();
+  pushToSheets(tx1);pushToSheets(tx2);
   closeModal();
   document.getElementById('modal-amt').value='';
   document.getElementById('modal-note').value='';
@@ -896,6 +982,10 @@ load();
 document.getElementById('i-date').value=new Date().toISOString().slice(0,10);
 setType('expense');
 render();
+// Auto-sync from Sheets on load
+setTimeout(pullFromSheets, 1500);
+// Auto-sync every 5 minutes
+setInterval(pullFromSheets, 5*60*1000);
 
 // Handle URL scheme from Shortcuts (called when app opened with controlgastos://add?...)
 function handleURLScheme(){
