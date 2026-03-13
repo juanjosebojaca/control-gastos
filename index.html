@@ -2,6 +2,9 @@
 <html lang="es">
 <head>
 <meta charset="UTF-8"/>
+<meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate"/>
+<meta http-equiv="Pragma" content="no-cache"/>
+<meta http-equiv="Expires" content="0"/>
 <meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no,viewport-fit=cover"/>
 <meta name="apple-mobile-web-app-capable" content="yes"/>
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent"/>
@@ -1181,9 +1184,13 @@ function render(){
 }
 
 // ── INIT ─────────────────────────────────────────────────
-load();
-loadBudgets();
-loadRecurring();
+// Force cache refresh
+const APP_VERSION = '2.5';
+if(localStorage.getItem('cdg_version') !== APP_VERSION){
+  localStorage.setItem('cdg_version', APP_VERSION);
+  window.location.reload(true);
+}
+load();loadBudgets();loadRecurring();
 document.getElementById('i-date').value=new Date().toISOString().slice(0,10);
 setType('expense');
 render();
