@@ -550,7 +550,9 @@ async function pullFromSheets(){
 
     if(sheetsData && Array.isArray(sheetsData) && sheetsData.length > 0){
       const sheetsIds = new Set(sheetsData.map(r=>String(r.id)));
-      const localManual = txs.filter(t=>!t.auto && !sheetsIds.has(String(t.id)));
+      // Keep local manual txs that are NOT in Sheets
+      // Also keep local txs that were edited (same id but different category/note)
+      const localManual = txs.filter(t=> !sheetsIds.has(String(t.id)));
       const sheetsAsTx = sheetsData.map(r=>{
         return {
           id: parseInt(r.id)||Date.now(),
@@ -578,7 +580,15 @@ async function pullFromSheets(){
           auto: r.auto==='1'||r.auto===1||r.auto===true
         };
       });
-      txs = [...sheetsAsTx, ...localManual].sort((a,b)=>b.id-a.id);
+      // Merge and deduplicate by id — Sheets version wins
+      const allTxs = [...sheetsAsTx, ...localManual];
+      const seen = new Set();
+      txs = allTxs.filter(t => {
+        const key = String(t.id);
+        if(seen.has(key)) return false;
+        seen.add(key);
+        return true;
+      }).sort((a,b)=>b.id-a.id);
       save();
       render();
       showSyncBadge('✅ '+sheetsAsTx.length+' transacciones');
