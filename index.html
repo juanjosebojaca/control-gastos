@@ -414,127 +414,27 @@ body::before{
   <div class="sp">
     <div class="sh">INFORMES Y EXPORTAR</div>
 
-    <div class="sc-banner">
-      <div class="sct">📲 APPLE PAY → AUTO REGISTRO</div>
-      <p>Usa la notificación de <strong style="color:var(--gold)">Wallet de iOS</strong> — funciona con <strong style="color:var(--cyan)">todas tus tarjetas</strong> sin importar el banco. Bancolombia, Davivienda, Nequi, cualquiera.</p>
-    </div>
-
-    <div class="panel">
-      <div class="pt">★ CÓMO FUNCIONA</div>
+    <div class="panel" style="border-color:var(--cyan2);">
+      <div class="pt" style="color:var(--cyan);">★ APPLE PAY — AUTO REGISTRO</div>
       <div class="divider"></div>
-      <p style="font-size:7px;color:var(--text2);line-height:1.9;margin-bottom:8px;">Cada vez que pagas con Apple Pay, Wallet muestra una notificación como la de tu foto:</p>
-      <div style="background:var(--shadow);border:2px solid var(--gold2);padding:10px;margin-bottom:10px;">
-        <div style="font-size:8px;color:var(--gold);margin-bottom:4px;">Wallet</div>
-        <div style="font-size:8px;color:#fff;">Visa Infinite — $199.900 en Bershka</div>
-        <div style="font-size:7px;color:var(--text2);margin-top:3px;">Mastercard ••5199 — $75.080 en Fatelares</div>
-      </div>
-      <p style="font-size:7px;color:var(--text2);line-height:1.9;">El Atajo captura esa notificación, extrae el monto, el comercio y la tarjeta, y los guarda aquí automáticamente con badge <strong style="color:var(--cyan)">AUTO</strong>.</p>
-    </div>
-
-    <div class="panel">
-      <div class="pt">★ GUÍA PASO A PASO — ATAJOS iOS</div>
-      <div class="divider"></div>
-
-      <div class="sc-step">
-        <div class="scs-num">PASO 1 — Crear el Atajo</div>
-        <div class="scs-txt">Abre <strong style="color:var(--gold)">Atajos</strong> en tu iPhone → toca <strong style="color:var(--cyan)">"+"</strong> arriba a la derecha → nómbralo <strong style="color:var(--gold)">"Control Gastos Auto"</strong></div>
-      </div>
-
-      <div class="sc-step">
-        <div class="scs-num">PASO 2 — Agregar acción JavaScript</div>
-        <div class="scs-txt">Toca <strong style="color:var(--gold)">"Agregar acción"</strong> → busca <strong style="color:var(--cyan)">"Ejecutar JavaScript en Safari"</strong> → agrégala. Luego pega este código exacto:
-          <span class="scs-code">// ── PARSER UNIVERSAL WALLET iOS ──────────────────
-// Funciona con TODAS las tarjetas de Apple Pay
-// Formato Wallet: "Visa Infinite — $199.900 en Bershka"
-// o: "Mastercard ••5199 — $75.080 en Fatelares"
-
-var txt = input; // Texto de la notificación Wallet
-
-// Extraer monto — busca patrón $199.900 o $ 199.900
-var montoMatch = txt.match(/\$\s*([\d][.\d]+|\d+)/);
-var montoRaw = montoMatch ? montoMatch[1].replace(/\./g,'') : '0';
-var monto = parseInt(montoRaw) || 0;
-
-// Extraer comercio — texto después de "en " al final
-var comercioMatch = txt.match(/\ben\s+(.+?)(?:\s*$|\s*,)/i);
-var comercio = comercioMatch ? comercioMatch[1].trim() : 'Comercio Apple Pay';
-
-// Extraer tarjeta — texto antes del " — "
-var tarjetaMatch = txt.match(/^(.+?)\s*[—–-]/);
-var tarjeta = tarjetaMatch ? tarjetaMatch[1].trim() : '';
-
-// Fecha de hoy
-var hoy = new Date().toISOString().slice(0,10);
-var mk = hoy.slice(0,7);
-
-// Guardar en la app
-if (monto > 0) {
-  var txs = JSON.parse(localStorage.getItem('cdg_main') || '[]');
-  txs.unshift({
-    id: Date.now(),
-    type: 'expense',
-    category: 'otros',
-    amount: monto,
-    note: comercio,
-    card: tarjeta,
-    date: hoy,
-    mk: mk,
-    auto: true
-  });
-  localStorage.setItem('cdg_main', JSON.stringify(txs));
-  completion('✅ ' + comercio + ' · ' + monto.toLocaleString('es-CO') + ' · ' + tarjeta);
-} else {
-  completion('⚠️ No se pudo leer el monto: ' + txt);
-}</span>
-        </div>
-      </div>
-
-      <div class="sc-step">
-        <div class="scs-num">PASO 3 — Conectar la Automatización</div>
-        <div class="scs-txt">Ve a la pestaña <strong style="color:var(--gold)">Automatización</strong> (abajo en Atajos) → toca <strong style="color:var(--cyan)">"+"</strong> → <strong style="color:var(--gold)">"Crear automatización personal"</strong> → busca <strong style="color:var(--cyan)">"Transacción con Apple Pay"</strong> → selecciónala</div>
-      </div>
-
-      <div class="sc-step">
-        <div class="scs-num">PASO 4 — Configurar el trigger</div>
-        <div class="scs-txt">En la automatización → <strong style="color:var(--gold)">"Con cualquier tarjeta"</strong> (cubre tus 4 tarjetas automáticamente) → toca <strong style="color:var(--cyan)">"Siguiente"</strong> → agrega acción → <strong style="color:var(--gold)">"Ejecutar atajo"</strong> → selecciona <strong style="color:var(--cyan)">"Control Gastos Auto"</strong></div>
-      </div>
-
-      <div class="sc-step">
-        <div class="scs-num">PASO 5 — Sin confirmación</div>
-        <div class="scs-txt">Activa <strong style="color:var(--gold)">"Ejecutar inmediatamente"</strong> (sin pedir confirmación cada vez) → toca <strong style="color:var(--cyan)">"Listo"</strong>. ¡Ya está configurado!</div>
-      </div>
-
-      <div class="sc-step">
-        <div class="scs-num">PASO 6 — Abrir la app en Safari</div>
-        <div class="scs-txt">Abre <strong style="color:var(--gold)">Control de Gastos en Safari</strong> y déjala en segundo plano. Cada pago con Apple Pay se registrará automáticamente con badge <strong style="color:var(--cyan)">AUTO</strong> y la tarjeta usada.<br/><br/>
-        ⚠️ <strong style="color:var(--gold)">Importante:</strong> La automatización <strong style="color:var(--cyan)">"Transacción con Apple Pay"</strong> es el trigger más directo — es nativa de iOS y se activa en el momento exacto del pago, antes de cualquier notificación bancaria.</div>
-      </div>
-
-      <div style="background:var(--bg2);border:2px solid var(--cyan2);padding:10px;margin-top:4px;">
-        <div style="font-size:7px;color:var(--cyan);margin-bottom:5px;">💡 NOTA SOBRE EL TEXTO DISPONIBLE</div>
-        <div style="font-size:7px;color:var(--text2);line-height:1.8;">En la automatización "Transacción con Apple Pay", el Atajo recibe automáticamente: <strong style="color:#fff">Nombre del comercio, Monto, Tarjeta usada y Fecha</strong>. Puedes pasar estas variables directamente como parámetros al script sin necesidad de parsear texto.</div>
-      </div>
-    </div>
-
-    <div class="panel">
-      <div class="pt">★ VARIABLES DISPONIBLES EN EL ATAJO</div>
-      <div class="divider"></div>
-      <p style="font-size:7px;color:var(--text2);margin-bottom:8px;line-height:1.8;">Cuando usas "Transacción con Apple Pay" como trigger, iOS te da estas variables listas:</p>
-      <div style="font-size:7px;line-height:2.2;">
+      <p style="font-size:7px;color:var(--text2);line-height:1.9;">El Atajo <strong style="color:var(--gold)">"Control Gastos Auto"</strong> está configurado en tu iPhone. Cada pago con Apple Pay se guarda automáticamente en Google Sheets y se sincroniza aquí.</p>
+      <div style="margin-top:10px;font-size:7px;line-height:2.2;">
         <div style="display:flex;justify-content:space-between;padding:4px 0;border-bottom:1px solid var(--border);">
-          <span style="color:var(--gold)">Nombre del comercio</span><span style="color:var(--cyan)">Bershka / Fatelares / Dunkin...</span>
+          <span style="color:var(--text2);">Trigger</span><span style="color:var(--gold);">Cualquiera de tus 4 tarjetas</span>
         </div>
         <div style="display:flex;justify-content:space-between;padding:4px 0;border-bottom:1px solid var(--border);">
-          <span style="color:var(--gold)">Monto</span><span style="color:var(--cyan)">199900 / 75080 / 12000...</span>
-        </div>
-        <div style="display:flex;justify-content:space-between;padding:4px 0;border-bottom:1px solid var(--border);">
-          <span style="color:var(--gold)">Tarjeta</span><span style="color:var(--cyan)">Visa Infinite / Mastercard ••5199</span>
+          <span style="color:var(--text2);">Destino</span><span style="color:var(--cyan);">Google Sheets → App</span>
         </div>
         <div style="display:flex;justify-content:space-between;padding:4px 0;">
-          <span style="color:var(--gold)">Fecha</span><span style="color:var(--cyan)">Automática del sistema</span>
+          <span style="color:var(--text2);">Badge</span><span style="color:var(--cyan);">AUTO en el historial</span>
         </div>
       </div>
     </div>
+
+        <button class="report-btn" onclick="resetAllData()" style="border-color:var(--red);color:var(--red)">
+      🗑️ LIMPIAR TODOS LOS DATOS LOCALES
+      <span>Borra todos los registros guardados en este dispositivo. Los datos en Google Sheets no se afectan.</span>
+    </button>
 
     <button class="report-btn" onclick="pullFromSheets()" style="border-color:var(--cyan);color:var(--cyan)">
       🔄 SINCRONIZAR CON GOOGLE SHEETS
@@ -813,6 +713,14 @@ function editCat(id){
     render();
     notify('✅ Registro actualizado');
   });
+}
+
+function resetAllData(){
+  if(!confirm('¿Borrar TODOS los datos locales? Los datos en Google Sheets no se afectan.')) return;
+  localStorage.removeItem('cdg_main');
+  txs = [];
+  render();
+  notify('🗑️ Datos locales borrados. Sincroniza para traer datos de Sheets.', 'var(--red2)');
 }
 
 function saveEditCat(id, newCat, modal){
