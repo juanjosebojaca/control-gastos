@@ -769,19 +769,50 @@ function editCat(id){
   if(!t) return;
   const cats = [...EC, ...IC, ...SC];
   const opts = cats.map(c=>`<option value="${c.id}" ${t.category===c.id?'selected':''}>${c.e} ${c.l}</option>`).join('');
+  // Remove any existing modal
+  const existing = document.getElementById('edit-modal');
+  if(existing) existing.remove();
   const modal = document.createElement('div');
-  modal.style.cssText='position:fixed;inset:0;background:rgba(0,0,0,0.85);z-index:999;display:flex;align-items:center;justify-content:center;padding:20px;';
+  modal.id = 'edit-modal';
+  modal.style.cssText='position:fixed;inset:0;background:rgba(0,0,0,0.88);z-index:9999;display:flex;align-items:center;justify-content:center;padding:20px;';
   modal.innerHTML=`
-    <div style="background:var(--panel);border:2px solid var(--gold2);padding:20px;width:100%;max-width:360px;">
-      <div style="font-size:9px;color:var(--gold);margin-bottom:12px;">✏️ EDITAR CATEGORÍA</div>
-      <div style="font-size:7px;color:var(--text2);margin-bottom:8px;">${t.note} · $${t.amount.toLocaleString('es-CO')}</div>
-      <select id="edit-cat-sel" style="width:100%;background:var(--bg2);color:var(--text);border:2px solid var(--border);padding:8px;font-size:7px;margin-bottom:12px;">${opts}</select>
+    <div style="background:var(--panel);border:2px solid var(--gold2);padding:20px;width:100%;max-width:360px;border-radius:4px;">
+      <div style="font-size:9px;color:var(--gold);margin-bottom:14px;">✏️ EDITAR REGISTRO</div>
+
+      <div style="font-size:7px;color:var(--text2);margin-bottom:4px;">NOMBRE / COMERCIO</div>
+      <input id="edit-note" value="${(t.note||'').replace(/"/g,'&quot;')}" style="width:100%;background:var(--bg2);color:var(--text);border:2px solid var(--border);padding:8px;font-size:7px;margin-bottom:10px;font-family:inherit;"/>
+
+      <div style="font-size:7px;color:var(--text2);margin-bottom:4px;">CATEGORÍA</div>
+      <select id="edit-cat-sel" style="width:100%;background:var(--bg2);color:var(--text);border:2px solid var(--border);padding:8px;font-size:7px;margin-bottom:10px;font-family:inherit;">${opts}</select>
+
+      <div style="font-size:7px;color:var(--text2);margin-bottom:4px;">FECHA</div>
+      <input id="edit-date" type="date" value="${t.date||''}" style="width:100%;background:var(--bg2);color:var(--text);border:2px solid var(--border);padding:8px;font-size:7px;margin-bottom:14px;font-family:inherit;"/>
+
       <div style="display:flex;gap:8px;">
-        <button onclick="this.closest('div[style]').remove()" style="flex:1;background:var(--bg2);color:var(--text2);border:2px solid var(--border);padding:8px;font-size:7px;cursor:pointer;">CANCELAR</button>
-        <button onclick="saveEditCat('${id}',document.getElementById('edit-cat-sel').value,this.closest('div[style]'))" style="flex:1;background:var(--gold2);color:#000;border:none;padding:8px;font-size:7px;cursor:pointer;font-weight:bold;">GUARDAR</button>
+        <button id="edit-cancel-btn" style="flex:1;background:var(--bg2);color:var(--text2);border:2px solid var(--border);padding:10px;font-size:7px;cursor:pointer;font-family:inherit;">CANCELAR</button>
+        <button id="edit-save-btn" style="flex:1;background:var(--gold2);color:#000;border:none;padding:10px;font-size:7px;cursor:pointer;font-weight:bold;font-family:inherit;">GUARDAR</button>
       </div>
     </div>`;
   document.body.appendChild(modal);
+
+  // Use addEventListener instead of onclick to avoid scope issues
+  document.getElementById('edit-cancel-btn').addEventListener('click', function(){
+    document.getElementById('edit-modal').remove();
+  });
+  document.getElementById('edit-save-btn').addEventListener('click', function(){
+    const newNote = document.getElementById('edit-note').value.trim();
+    const newCat = document.getElementById('edit-cat-sel').value;
+    const newDate = document.getElementById('edit-date').value;
+    const tx = txs.find(x=>String(x.id)===String(id));
+    if(!tx) return;
+    if(newNote) tx.note = newNote;
+    if(newCat) tx.category = newCat;
+    if(newDate){ tx.date = newDate; tx.mk = newDate.slice(0,7); }
+    save();
+    document.getElementById('edit-modal').remove();
+    render();
+    notify('✅ Registro actualizado');
+  });
 }
 
 function saveEditCat(id, newCat, modal){
@@ -789,7 +820,7 @@ function saveEditCat(id, newCat, modal){
   if(!t) return;
   t.category = newCat;
   save();
-  modal.remove();
+  if(modal) modal.remove();
   render();
   notify('✅ Categoría actualizada');
 }
