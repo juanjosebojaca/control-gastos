@@ -895,8 +895,12 @@ function saveEditCat(id, newCat, modal){
 
 function delTx(id){
   if(!confirm('¿Eliminar este registro?'))return;
-  txs=txs.filter(t=>t.id!==id);save();
-  notify('Eliminado 🗑️','var(--red2)');render();
+  txs=txs.filter(t=>String(t.id)!==String(id));
+  save();
+  notify('Eliminado 🗑️','var(--red2)');
+  render();
+  // Also delete from Google Sheets
+  fetch(SHEETS_URL+'?action=delete&id='+id).catch(()=>{});
 }
 
 // ── TRANSFER SAVINGS ─────────────────────────────────────
