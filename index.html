@@ -623,13 +623,16 @@ async function pullFromSheets(){
           auto: r.auto==='1'||r.auto===1||r.auto===true
         };
       });
-      // Merge and deduplicate by id — Sheets version wins
+      // Merge and deduplicate by id AND by comercio+fecha+monto
       const allTxs = [...sheetsAsTx, ...localManual];
-      const seen = new Set();
+      const seenIds = new Set();
+      const seenSig = new Set(); // signature: note+date+amount
       txs = allTxs.filter(t => {
-        const key = String(t.id);
-        if(seen.has(key)) return false;
-        seen.add(key);
+        const idKey = String(t.id);
+        const sigKey = `${t.note}|${t.date}|${t.amount}`;
+        if(seenIds.has(idKey) || (t.auto && seenSig.has(sigKey))) return false;
+        seenIds.add(idKey);
+        if(t.auto) seenSig.add(sigKey);
         return true;
       }).sort((a,b)=>b.id-a.id);
       save();
@@ -1259,10 +1262,12 @@ load();loadBudgets();loadRecurring();
 document.getElementById('i-date').value=new Date().toISOString().slice(0,10);
 setType('expense');
 render();
-// Auto-sync from Sheets on load
-setTimeout(pullFromSheets, 1500);
-// Auto-sync every 5 minutes
-setInterval(pullFromSheets, 5*60*1000);
+// Auto-sync from Sheets on load (only once per session)
+if(!sessionStorage.getItem('synced')){
+  setTimeout(()=>{ pullFromSheets(); sessionStorage.setItem('synced','1'); }, 1500);
+}
+// Auto-sync every 10 minutes
+setInterval(pullFromSheets, 10*60*1000);
 
 // Handle URL scheme from Shortcuts (called when app opened with controlgastos://add?...)
 function handleURLScheme(){
