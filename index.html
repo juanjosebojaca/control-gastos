@@ -443,15 +443,15 @@ body::before{
     </div>
 
     <div class="panel" style="border-color:var(--cyan2);">
-      <div class="pt" style="color:var(--cyan);">★ APPLE PAY — AUTO REGISTRO</div>
+      <div class="pt" style="color:var(--cyan);">📧 CORREOS DEL BANCO — AUTO REGISTRO</div>
       <div class="divider"></div>
-      <p style="font-size:7px;color:var(--text2);line-height:1.9;">El Atajo <strong style="color:var(--gold)">"Control Gastos Auto"</strong> está configurado en tu iPhone. Cada pago con Apple Pay se guarda automáticamente en Google Sheets y se sincroniza aquí.</p>
+      <p style="font-size:7px;color:var(--text2);line-height:1.9;">Los correos de notificación de Bancolombia se procesan automáticamente cada hora y se guardan en Google Sheets. Aparecen aquí con el badge <strong style="color:var(--cyan)">AUTO</strong> y puedes editarlos a conveniencia.</p>
       <div style="margin-top:10px;font-size:7px;line-height:2.2;">
         <div style="display:flex;justify-content:space-between;padding:4px 0;border-bottom:1px solid var(--border);">
-          <span style="color:var(--text2);">Trigger</span><span style="color:var(--gold);">Cualquiera de tus 4 tarjetas</span>
+          <span style="color:var(--text2);">Fuente</span><span style="color:var(--gold);">Gmail · Bancolombia</span>
         </div>
         <div style="display:flex;justify-content:space-between;padding:4px 0;border-bottom:1px solid var(--border);">
-          <span style="color:var(--text2);">Destino</span><span style="color:var(--cyan);">Google Sheets → App</span>
+          <span style="color:var(--text2);">Frecuencia</span><span style="color:var(--cyan);">Cada 1 hora (trigger)</span>
         </div>
         <div style="display:flex;justify-content:space-between;padding:4px 0;">
           <span style="color:var(--text2);">Badge</span><span style="color:var(--cyan);">AUTO en el historial</span>
@@ -466,7 +466,7 @@ body::before{
 
     <button class="report-btn" onclick="pullFromSheets()" style="border-color:var(--cyan);color:var(--cyan)">
       🔄 SINCRONIZAR CON GOOGLE SHEETS
-      <span>Trae todas las transacciones automáticas de Apple Pay registradas en Google Sheets.</span>
+      <span>Trae todas las transacciones (manuales y automáticas del banco) registradas en Google Sheets.</span>
     </button>
 
     <button class="report-btn" onclick="exportCSV()">
@@ -949,7 +949,7 @@ function delTx(id){
   notify('Eliminado 🗑️','var(--red2)');
   render();
   // Also delete from Google Sheets
-  fetch(SHEETS_URL+'?action=delete&id='+id).catch(()=>{});
+  new Image().src = SHEETS_URL + '?action=delete&id=' + id + '&t=' + Date.now();
 }
 
 // ── TRANSFER SAVINGS ─────────────────────────────────────
@@ -1268,29 +1268,6 @@ if(!sessionStorage.getItem('synced')){
 }
 // Auto-sync every 10 minutes
 setInterval(pullFromSheets, 10*60*1000);
-
-// Handle URL scheme from Shortcuts (called when app opened with controlgastos://add?...)
-function handleURLScheme(){
-  const hash=window.location.hash;
-  if(!hash||!hash.includes('add?'))return;
-  try{
-    const params=new URLSearchParams(hash.replace('#add?',''));
-    const amt=parseFloat(params.get('amount'));
-    const store=params.get('store')||'';
-    const card=params.get('card')||'';
-    const date=params.get('date')||new Date().toISOString().slice(0,10);
-    const cat=params.get('category')||'otros';
-    if(amt&&amt>0){
-      txs.unshift({id:Date.now(),type:'expense',category:cat,amount:amt,note:store,card,date,mk:date.slice(0,7),auto:true});
-      save();
-      notify(`📲 Auto: ${store} ${fmt(amt)}`,'var(--cyan2)');
-      window.location.hash='';
-      render();
-    }
-  }catch(e){}
-}
-window.addEventListener('hashchange',handleURLScheme);
-handleURLScheme();
 
 // Service Worker
 if('serviceWorker' in navigator){
