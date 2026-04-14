@@ -597,29 +597,22 @@ async function pullFromSheets(){
       // Also keep local txs that were edited (same id but different category/note)
       const localManual = txs.filter(t=> !sheetsIds.has(String(t.id)));
       const sheetsAsTx = sheetsData.map(r=>{
+        // fecha: siempre YYYY-MM-DD limpio, sin parte T ni zona horaria
+        const rawFecha = String(r.fecha||'');
+        const fecha = rawFecha.replace(/T[\d:.Z+\-]+$/, '').trim().slice(0,10)
+                      || new Date().toISOString().slice(0,10);
+        // mk: siempre derivado de fecha limpia, nunca del campo mk del sheet
+        const mk = fecha.slice(0,7);
         return {
-          id: parseInt(r.id)||Date.now(),
+          // id: String puro — nunca parseInt (rompe IDs de email como "1713123_35000")
+          id: String(r.id||Date.now()),
           type: r.tipo||'expense',
           category: r.categoria||'otros',
           amount: parseFloat(r.monto)||0,
           note: r.comercio||'',
           card: r.tarjeta||'',
-          date: (()=>{
-            let d = r.fecha||'';
-            if(typeof d === 'object') d = new Date(d).toISOString();
-            d = String(d);
-            // Remove timezone/time part: "2026-03-13T04:00:00.000Z" → "2026-03-13"
-            d = d.replace(/T[\d:\.Z\+\-]+$/, '').trim().slice(0,10);
-            return d || new Date().toISOString().slice(0,10);
-          })(),
-          mk: (()=>{
-            let mk = String(r.mk||'').replace(/T.*$/, '').trim().slice(0,7);
-            if(!mk || mk.length < 7) {
-              let d = String(r.fecha||'').replace(/T.*$/, '').trim().slice(0,10);
-              mk = d.slice(0,7);
-            }
-            return mk || new Date().toISOString().slice(0,7);
-          })(),
+          date: fecha,
+          mk: mk,
           auto: r.auto==='1'||r.auto===1||r.auto===true
         };
       });
@@ -634,7 +627,13 @@ async function pullFromSheets(){
         seenIds.add(idKey);
         if(t.auto) seenSig.add(sigKey);
         return true;
-      }).sort((a,b)=>b.id-a.id);
+      }).sort((a,b)=>{
+        // IDs pueden ser numéricos o strings tipo "timestamp_monto"
+        // Comparar como strings de fecha invertida es suficiente para ordenar cronológicamente
+        const ta = String(a.id).split('_')[0];
+        const tb = String(b.id).split('_')[0];
+        return Number(tb) - Number(ta) || String(b.id).localeCompare(String(a.id));
+      });
       save();
       render();
       showSyncBadge('✅ '+sheetsAsTx.length+' transacciones');
