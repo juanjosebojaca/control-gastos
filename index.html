@@ -560,6 +560,24 @@ async function pushToSheets(tx){
   }catch(e){console.log('Sheets sync error:',e);}
 }
 
+// Update an existing transaction in Google Sheets
+function updateInSheets(tx){
+  try{
+    const params=new URLSearchParams({
+      action:'update',
+      id: String(tx.id),
+      fecha: tx.date,
+      comercio: tx.note||'',
+      monto: tx.amount,
+      tarjeta: tx.card||'',
+      categoria: tx.category,
+      tipo: tx.type,
+      mk: tx.mk
+    });
+    new Image().src = SHEETS_URL+'?'+params.toString()+'&t='+Date.now();
+  }catch(e){console.log('Update sync error:',e);}
+}
+
 // Pull ALL transactions from Google Sheets and merge with local
 async function pullFromSheets(){
   try{
@@ -727,7 +745,6 @@ function editCat(id){
   if(!t) return;
   const cats = [...EC, ...IC, ...SC];
   const opts = cats.map(c=>`<option value="${c.id}" ${t.category===c.id?'selected':''}>${c.e} ${c.l}</option>`).join('');
-  // Remove any existing modal
   const existing = document.getElementById('edit-modal');
   if(existing) existing.remove();
   const modal = document.createElement('div');
@@ -743,6 +760,13 @@ function editCat(id){
       <div style="font-size:7px;color:var(--text2);margin-bottom:4px;">MONTO</div>
       <input id="edit-amount" type="number" value="${t.amount||0}" style="width:100%;background:var(--bg2);color:var(--text);border:2px solid var(--border);padding:8px;font-size:7px;margin-bottom:10px;font-family:inherit;"/>
 
+      <div style="font-size:7px;color:var(--text2);margin-bottom:4px;">TIPO</div>
+      <select id="edit-tipo" style="width:100%;background:var(--bg2);color:var(--text);border:2px solid var(--border);padding:8px;font-size:7px;margin-bottom:10px;font-family:inherit;">
+        <option value="expense" ${t.type==='expense'?'selected':''}>💸 Gasto</option>
+        <option value="income"  ${t.type==='income' ?'selected':''}>💰 Ingreso</option>
+        <option value="saving"  ${t.type==='saving' ?'selected':''}>🌾 Ahorro</option>
+      </select>
+
       <div style="font-size:7px;color:var(--text2);margin-bottom:4px;">CATEGORÍA</div>
       <select id="edit-cat-sel" style="width:100%;background:var(--bg2);color:var(--text);border:2px solid var(--border);padding:8px;font-size:7px;margin-bottom:10px;font-family:inherit;">${opts}</select>
 
@@ -756,22 +780,24 @@ function editCat(id){
     </div>`;
   document.body.appendChild(modal);
 
-  // Use addEventListener instead of onclick to avoid scope issues
   document.getElementById('edit-cancel-btn').addEventListener('click', function(){
     document.getElementById('edit-modal').remove();
   });
   document.getElementById('edit-save-btn').addEventListener('click', function(){
-    const newNote = document.getElementById('edit-note').value.trim();
+    const newNote   = document.getElementById('edit-note').value.trim();
     const newAmount = parseFloat(document.getElementById('edit-amount').value);
-    const newCat = document.getElementById('edit-cat-sel').value;
-    const newDate = document.getElementById('edit-date').value;
+    const newCat    = document.getElementById('edit-cat-sel').value;
+    const newDate   = document.getElementById('edit-date').value;
+    const newTipo   = document.getElementById('edit-tipo').value;
     const tx = txs.find(x=>String(x.id)===String(id));
     if(!tx) return;
     if(newNote) tx.note = newNote;
     if(!isNaN(newAmount) && newAmount >= 0) tx.amount = newAmount;
-    if(newCat) tx.category = newCat;
+    if(newCat)  tx.category = newCat;
+    if(newTipo) tx.type = newTipo;
     if(newDate){ tx.date = newDate; tx.mk = newDate.slice(0,7); }
     save();
+    updateInSheets(tx);   // ← sincroniza edición al Sheet
     document.getElementById('edit-modal').remove();
     render();
     notify('✅ Registro actualizado');
