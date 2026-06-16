@@ -158,7 +158,7 @@ html,body{height:100%;width:100%;background:var(--ink);color:var(--cream);font-f
 .txn-chip{background:var(--ink);border:1px solid var(--rim);border-radius:4px;padding:1px 6px;font-size:9.5px;font-weight:600;color:var(--muted2)}
 .txn-r{text-align:right;flex-shrink:0}
 .txn-amt{font-size:14px;font-weight:700;letter-spacing:-.3px}
-.txn-amt.pos{color:var(--pos-t)} .txn-amt.neg{color:var(--neg-t)} .txn-amt.sav{color:var(--cream2)}
+.txn-amt.pos{color:var(--pos-t)} .txn-amt.neg{color:var(--neg-t)} .txn-amt.sav{color:var(--cream2)} .txn-amt.warn{color:var(--warn-t)}
 .txn-cuota{font-size:9.5px;color:var(--muted);margin-top:2px}
 
 /* ── GOALS ── */
@@ -492,7 +492,7 @@ option{background:var(--ink2)}
         <div class="qs-l">Ahorros</div>
         <div class="qs-v neu num" id="sSav2">$0</div>
       </div>
-      <div class="qs" style="cursor:default">
+      <div class="qs" onclick="openDrillDown('cuotas')" style="cursor:pointer">
         <div class="qs-l">Cuotas futuras</div>
         <div class="qs-v warn num" id="qCom">$0</div>
       </div>
@@ -914,7 +914,7 @@ function renderTarjetas(){
   const txns=ST.data.transacciones||[];
   if(!ts.length){el.innerHTML=`<div class="empty"><svg viewBox="0 0 24 24" fill="none"><path d="M3 10h18M7 15h1m4 0h1m-7 4h12a3 3 0 003-3V8a3 3 0 00-3-3H6a3 3 0 00-3 3v8a3 3 0 003 3z" stroke-linecap="round" stroke-linejoin="round"/></svg><div class="empty-t">Sin tarjetas</div><div class="empty-s">Sincroniza para ver tus tarjetas.</div></div>`;return;}
   el.innerHTML=ts.map(t=>{
-    const cardTxns=(ST.data.transacciones||[]).filter(x=>x.tarjeta===t.nombre&&x.fecha_cuota===mes&&x.estado==='ejecutado');
+    const cardTxns=(ST.data.transacciones||[]).filter(x=>{const pm=x.fecha_compra?x.fecha_compra.substring(0,7):x.fecha_cuota;return x.tarjeta===t.nombre&&pm===mes&&x.cuota_numero==1;});
     const balance=cardTxns.reduce((s,x)=>s+(parseFloat(x.monto_cuota)||0),0);
     const daysToPayment=calcDaysTo(now,parseInt(t.dia_pago));
     const badgeClass=daysToPayment<=5?'due':'ok';
@@ -1122,9 +1122,10 @@ function renderHome(){
 
   // Compute directly from raw data — always matches Historial
   const inc=(ST.data.ingresos||[]).filter(t=>t.mes_cierre===mes).reduce((s,t)=>s+t.monto,0);
-  const exp=(ST.data.transacciones||[]).filter(t=>t.fecha_cuota===mes&&t.estado==='ejecutado').reduce((s,t)=>s+t.monto_cuota,0);
+  // Expenses = purchases made this month (by purchase date), regardless of payment month
+  const exp=(ST.data.transacciones||[]).filter(t=>{const pm=t.fecha_compra?t.fecha_compra.substring(0,7):t.fecha_cuota;return pm===mes&&t.cuota_numero==1;}).reduce((s,t)=>s+t.monto_total_compra,0);
   const sav=(ST.data.ahorros||[]).filter(t=>t.mes_cierre===mes).reduce((s,t)=>s+t.monto,0);
-  const com=(ST.data.transacciones||[]).filter(t=>t.estado==='comprometido'&&t.fecha_cuota>mes).reduce((s,t)=>s+t.monto_cuota,0);
+  const com=(ST.data.transacciones||[]).filter(t=>t.cuota_numero>1||t.estado==='comprometido').reduce((s,t)=>s+t.monto_cuota,0);
   const rPrev=(ST.data.resumen||[]).find(x=>x.mes===prevMes(mes))||{};
   const disp=Math.max(0,inc-exp-sav);
 
@@ -1223,7 +1224,7 @@ function renderScore(inc,exp,sav,com){
 }
 
 function renderAIInsight(mes,inc,exp,sav,com){
-  const txns=(ST.data.transacciones||[]).filter(t=>t.fecha_cuota===mes&&t.estado==='ejecutado');
+  const txns=(ST.data.transacciones||[]).filter(t=>{const pm=t.fecha_compra?t.fecha_compra.substring(0,7):t.fecha_cuota;return pm===mes&&t.cuota_numero==1;});
   const cats={};txns.forEach(t=>{cats[t.subcategoria]=(cats[t.subcategoria]||0)+(parseFloat(t.monto_cuota)||0);});
   const top=Object.entries(cats).sort((a,b)=>b[1]-a[1])[0];
   const savRate=inc>0?Math.round((sav/inc)*100):0;
@@ -1236,7 +1237,7 @@ function renderAIInsight(mes,inc,exp,sav,com){
 }
 
 function renderInsights(mes,inc,exp,sav,com){
-  const txns=(ST.data.transacciones||[]).filter(t=>t.fecha_cuota===mes&&t.estado==='ejecutado');
+  const txns=(ST.data.transacciones||[]).filter(t=>{const pm=t.fecha_compra?t.fecha_compra.substring(0,7):t.fecha_cuota;return pm===mes&&t.cuota_numero==1;});
   const cats={};txns.forEach(t=>{cats[t.subcategoria]=(cats[t.subcategoria]||0)+(parseFloat(t.monto_cuota)||0);});
   const top=Object.entries(cats).sort((a,b)=>b[1]-a[1])[0];
   const intT=txns.filter(t=>t.cuota_numero==1).reduce((s,t)=>s+(parseFloat(t.costo_interes_total)||0),0);
@@ -1256,7 +1257,7 @@ function renderInsights(mes,inc,exp,sav,com){
 
 function renderRecent(mes){
   const all=[
-    ...(ST.data.transacciones||[]).filter(t=>t.fecha_cuota===mes&&t.estado==='ejecutado').map(t=>({...t,_tab:'Transacciones'})),
+    ...(ST.data.transacciones||[]).filter(t=>{const pm=t.fecha_compra?t.fecha_compra.substring(0,7):t.fecha_cuota;return pm===mes&&t.cuota_numero==1;}).map(t=>({...t,_tab:'Transacciones'})),
     ...(ST.data.ingresos||[]).filter(t=>t.mes_cierre===mes).map(t=>({...t,_tab:'Ingresos',tipo:'Ingreso'})),
     ...(ST.data.ahorros||[]).filter(t=>t.mes_cierre===mes).map(t=>({...t,_tab:'Ahorros',tipo:'Ahorro'})),
   ].sort((a,b)=>new Date(b.fecha_compra||b.fecha)-new Date(a.fecha_compra||a.fecha)).slice(0,6);
@@ -1268,8 +1269,11 @@ function renderRecent(mes){
 // ── TXN HTML ─────────────────────────────────────────────────
 function txnHTML(t){
   const isI=t._tab==='Ingresos',isS=t._tab==='Ahorros';
-  const monto=parseFloat(t.monto_cuota||t.monto)||0;
-  const sign=isI?'+':'−',cls=isI?'pos':isS?'sav':'neg';
+  // For expense entries: show monto_cuota (what's paid this period)
+  const monto=isI?(parseFloat(t.monto)||0):isS?(parseFloat(t.monto)||0):(parseFloat(t.monto_cuota)||parseFloat(t.monto)||0);
+  const sign=isI?'+':'−';
+  const isFuture=!isI&&!isS&&(t.estado==='comprometido'||(t.cuota_numero>1&&t.fecha_cuota>new Date().toISOString().substring(0,7)));
+  const cls=isI?'pos':isS?'sav':isFuture?'warn':'neg';
   const cat=t.subcategoria||t.categoria||'';
   const ico=CAT_ICO[cat]||CAT_ICO['default'];
   const medio=t.tarjeta||t.medio_pago||'';
@@ -1288,7 +1292,7 @@ function txnHTML(t){
 // ── HISTORIAL ────────────────────────────────────────────────
 function renderHist(){
   const all=[
-    ...(ST.data.transacciones||[]).filter(t=>t.estado==='ejecutado'&&t.fecha_cuota).map(t=>({...t,_tab:'Transacciones',_mes:t.fecha_cuota})),
+    ...(ST.data.transacciones||[]).filter(t=>t.fecha_cuota).map(t=>({...t,_tab:'Transacciones',_mes:t.fecha_cuota})),
     ...(ST.data.ingresos||[]).filter(t=>t.mes_cierre).map(t=>({...t,_tab:'Ingresos',tipo:'Ingreso',_mes:t.mes_cierre})),
     ...(ST.data.ahorros||[]).filter(t=>t.mes_cierre).map(t=>({...t,_tab:'Ahorros',tipo:'Ahorro',_mes:t.mes_cierre})),
   ];
@@ -1304,7 +1308,7 @@ function renderHist(){
     const items=byM[m].sort((a,b)=>new Date(b.fecha_compra||b.fecha)-new Date(a.fecha_compra||a.fecha));
     const [y,mo]=m.split('-');
     const nm=new Date(y,mo-1,1).toLocaleDateString('es-CO',{month:'long',year:'numeric'});
-    const tot=items.filter(t=>t._tab==='Transacciones').reduce((s,t)=>s+(parseFloat(t.monto_cuota)||0),0);
+    const tot=items.filter(t=>t._tab==='Transacciones').reduce((s,t)=>s+(parseFloat(t.monto_cuota||t.monto)||0),0);
     html+=`<div class="mth-hdr"><div class="mth-name">${nm.charAt(0).toUpperCase()+nm.slice(1)}</div><div class="mth-tot">−$${fmtK(tot)}</div></div><div class="mth-list">${items.map(t=>txnHTML(t)).join('')}</div>`;
   });
   document.getElementById('histContent').innerHTML=html;
@@ -1315,7 +1319,7 @@ function renderInf(){
   const now=new Date(),mes=`${now.getFullYear()}-${String(now.getMonth()+1).padStart(2,'0')}`;
   // Compute directly from raw data - same source as History
   const incR=(ST.data.ingresos||[]).filter(t=>t.mes_cierre===mes).reduce((s,t)=>s+t.monto,0);
-  const expR=(ST.data.transacciones||[]).filter(t=>t.fecha_cuota===mes&&t.estado==='ejecutado').reduce((s,t)=>s+t.monto_cuota,0);
+  const expR=(ST.data.transacciones||[]).filter(t=>{const pm=t.fecha_compra?t.fecha_compra.substring(0,7):t.fecha_cuota;return pm===mes&&t.cuota_numero==1;}).reduce((s,t)=>s+t.monto_total_compra,0);
   const savR=(ST.data.ahorros||[]).filter(t=>t.mes_cierre===mes).reduce((s,t)=>s+t.monto,0);
   const inc=incR, exp=expR, sav=savR;
   document.getElementById('rptSum').innerHTML=`
@@ -1324,7 +1328,7 @@ function renderInf(){
     <div class="rpt-row"><span class="rpt-k">Gastos ejecutados</span><span class="rpt-v num" style="color:var(--neg-t)">$${fmt(exp)}</span></div>
     <div class="rpt-row"><span class="rpt-k">Ahorros</span><span class="rpt-v num" style="color:var(--cream2)">$${fmt(sav)}</span></div>
     <div class="rpt-row"><span class="rpt-k">Disponible real</span><span class="rpt-v num" style="color:var(--cream)">$${fmt(Math.max(0,inc-exp-sav))}</span></div>`;
-  const txns=(ST.data.transacciones||[]).filter(t=>t.fecha_cuota===mes&&t.estado==='ejecutado');
+  const txns=(ST.data.transacciones||[]).filter(t=>{const pm=t.fecha_compra?t.fecha_compra.substring(0,7):t.fecha_cuota;return pm===mes&&t.cuota_numero==1;});
   const bC={};txns.forEach(t=>{bC[t.subcategoria]=(bC[t.subcategoria]||0)+(parseFloat(t.monto_cuota)||0);});
   bars('chartG',bC,'var(--neg-t)');
   // Donut
@@ -1369,7 +1373,7 @@ async function sendAI(){
   addMsg('user',msg);inp.value='';
   const now=new Date(),mes=`${now.getFullYear()}-${String(now.getMonth()+1).padStart(2,'0')}`;
   const r=(ST.data.resumen||[]).find(x=>x.mes===mes)||{};
-  const txns=(ST.data.transacciones||[]).filter(t=>t.fecha_cuota===mes&&t.estado==='ejecutado');
+  const txns=(ST.data.transacciones||[]).filter(t=>{const pm=t.fecha_compra?t.fecha_compra.substring(0,7):t.fecha_cuota;return pm===mes&&t.cuota_numero==1;});
   const cats={};txns.forEach(t=>{cats[t.subcategoria]=(cats[t.subcategoria]||0)+(parseFloat(t.monto_cuota)||0);});
   const goals=getGoals();
   // Use same direct calculation as Dashboard for consistency
@@ -1392,11 +1396,31 @@ Responde de forma concreta, máximo 3 párrafos cortos.`;
   const typing=document.createElement('div');typing.className='msg ai';typing.innerHTML='<span style="opacity:.35">Analizando...</span>';
   document.getElementById('aiMsgs').appendChild(typing);document.getElementById('aiMsgs').scrollTop=99999;
   try{
-    const res=await fetch('https://api.anthropic.com/v1/messages',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({model:'claude-sonnet-4-6',max_tokens:1000,system:sys,messages:ST.aiH})});
-    const d=await res.json();const reply=d.content?.[0]?.text||'No pude responder.';
-    typing.remove();ST.aiH.push({role:'assistant',content:reply});addMsg('ai',reply.replace(/\n/g,'<br>'));
+    // Try Anthropic API — works in Claude.ai artifacts context
+    const res=await fetch('https://api.anthropic.com/v1/messages',{
+      method:'POST',
+      headers:{'Content-Type':'application/json'},
+      body:JSON.stringify({model:'claude-sonnet-4-6',max_tokens:1024,system:sys,messages:ST.aiH})
+    });
+    if(!res.ok){
+      const errData=await res.json().catch(()=>({}));
+      throw new Error(errData.error?.message||'HTTP '+res.status);
+    }
+    const d=await res.json();
+    const reply=(d.content&&d.content[0]&&d.content[0].text)||'Sin respuesta del asistente.';
+    typing.remove();
+    ST.aiH.push({role:'assistant',content:reply});
+    addMsg('ai',reply.replace(/\n\n/g,'</p><p>').replace(/\n/g,'<br>'));
     document.getElementById('aiSugs').style.display='none';
-  }catch(e){typing.remove();addMsg('ai','Error conectando con el asistente.');}
+  }catch(e){
+    typing.remove();
+    const isNetwork=e.message&&(e.message.includes('Failed to fetch')||e.message.includes('NetworkError')||e.message.includes('CORS'));
+    if(isNetwork){
+      addMsg('ai','El asistente de IA solo está disponible cuando usas la app dentro de <strong>Claude.ai</strong>. Desde GitHub Pages la conexión directa con la API no está disponible por restricciones de seguridad del navegador (CORS). <br><br>Para usar Kasa AI, abre la app desde Claude.ai.');
+    }else{
+      addMsg('ai','No pude conectar con el asistente. Error: '+e.message+'. Verifica tu conexión e intenta de nuevo.');
+    }
+  }
 }
 
 // ── DETAIL ───────────────────────────────────────────────────
@@ -1494,7 +1518,7 @@ function renderNWChart(){
 function openCardModal(tarjeta){
   const now=new Date();
   const mes=`${now.getFullYear()}-${String(now.getMonth()+1).padStart(2,'0')}`;
-  const txns=(ST.data.transacciones||[]).filter(t=>t.tarjeta===tarjeta&&t.fecha_cuota===mes&&t.estado==='ejecutado');
+  const txns=(ST.data.transacciones||[]).filter(t=>{const pm=t.fecha_compra?t.fecha_compra.substring(0,7):t.fecha_cuota;return t.tarjeta===tarjeta&&pm===mes&&t.cuota_numero==1;});
   const balance=txns.reduce((s,t)=>s+t.monto_cuota,0);
   const t=ST.data.tarjetas?.find(x=>x.nombre===tarjeta)||{};
   document.getElementById('cardModalName').textContent=tarjeta;
@@ -1528,6 +1552,38 @@ async function cerrarMes(){if(!confirm('¿Cerrar el mes actual?'))return;try{awa
 // ── UTILS ────────────────────────────────────────────────────
 // ── DRILL DOWN ────────────────────────────────────────────
 function openDrillDown(type){
+  if(type==='cuotas'){
+    const items=(ST.data.transacciones||[]).filter(t=>t.cuota_numero>1||t.estado==='comprometido')
+      .sort((a,b)=>a.fecha_cuota.localeCompare(b.fecha_cuota));
+    const total=items.reduce((s,t)=>s+t.monto_cuota,0);
+    document.getElementById('drillTitle').textContent='Cuotas futuras comprometidas';
+    document.getElementById('drillTitle').style.color='var(--warn-t)';
+    document.getElementById('drillTotal').textContent='$'+fmt(total);
+    document.getElementById('drillTotal').style.color='var(--warn-t)';
+    // Group by month
+    const byM={};
+    items.forEach(t=>{const m=t.fecha_cuota||'';if(!byM[m])byM[m]=0;byM[m]+=t.monto_cuota;});
+    document.getElementById('drillBars').innerHTML=Object.entries(byM).sort().map(([m,v])=>`
+      <div style="display:flex;align-items:center;gap:10px;margin-bottom:9px">
+        <div style="font-size:12px;font-weight:600;color:var(--muted2);width:72px;flex-shrink:0">${m}</div>
+        <div style="flex:1;height:4px;background:var(--ink4);border-radius:2px;overflow:hidden">
+          <div style="height:100%;width:${Math.round((v/total)*100)}%;background:var(--warn-t);border-radius:2px"></div>
+        </div>
+        <div style="font-size:11px;font-weight:700;color:var(--muted2);width:64px;text-align:right;font-variant-numeric:tabular-nums">$${fmtK(v)}</div>
+      </div>`).join('');
+    document.getElementById('drillTxns').innerHTML=items.length?items.map(t=>`
+      <div class="txn" onclick='openDet(${JSON.stringify({...t,_tab:"Transacciones"})})'>
+        <div class="txn-ico" style="background:var(--warn-d)"><svg viewBox="0 0 24 24" fill="none" width="15" height="15" stroke="var(--warn-t)" stroke-width="1.8"><rect x="3" y="4" width="18" height="18" rx="2" stroke-linecap="round" stroke-linejoin="round"/><path d="M16 2v4M8 2v4M3 10h18" stroke-linecap="round" stroke-linejoin="round"/></svg></div>
+        <div class="txn-body">
+          <div class="txn-name">${t.descripcion||t.subcategoria||'—'}</div>
+          <div class="txn-meta">${t.fecha_cuota} <span class="txn-chip">${t.cuota_numero}/${t.cuotas_total}</span></div>
+        </div>
+        <div class="txn-r"><div class="txn-amt warn num">−$${fmtK(t.monto_cuota)}</div></div>
+      </div>`).join(''):'<div style="padding:16px;color:var(--muted);font-size:13px;text-align:center">Sin cuotas futuras</div>';
+    document.getElementById('drillModal').classList.add('on');
+    return;
+  }
+
   const now=new Date(),mes=`${now.getFullYear()}-${String(now.getMonth()+1).padStart(2,'0')}`;
   let items=[],title='',total=0,color='var(--cream)';
 
@@ -1536,7 +1592,7 @@ function openDrillDown(type){
     title='Ingresos del mes';color='var(--pos-t)';
     total=items.reduce((s,t)=>s+t.monto,0);
   }else if(type==='gasto'){
-    items=(ST.data.transacciones||[]).filter(t=>t.fecha_cuota===mes&&t.estado==='ejecutado').map(t=>({...t,_tab:'Transacciones'}));
+    items=(ST.data.transacciones||[]).filter(t=>{const pm=t.fecha_compra?t.fecha_compra.substring(0,7):t.fecha_cuota;return pm===mes&&t.cuota_numero==1;}).map(t=>({...t,_tab:'Transacciones'}));
     title='Gastos del mes';color='var(--neg-t)';
     total=items.reduce((s,t)=>s+t.monto_cuota,0);
   }else{
