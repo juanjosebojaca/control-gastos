@@ -876,9 +876,10 @@ function renderGoals(){
   const el=document.getElementById('goalsList');
   if(!goals.length){el.innerHTML=`<div class="empty"><svg viewBox="0 0 24 24" fill="none"><circle cx="12" cy="12" r="10" stroke-linecap="round" stroke-linejoin="round"/><circle cx="12" cy="12" r="6" stroke-linecap="round" stroke-linejoin="round"/><circle cx="12" cy="12" r="2" stroke-linecap="round" stroke-linejoin="round"/></svg><div class="empty-t">Sin metas</div><div class="empty-s">Agrega tu primera meta financiera.<br>Casa, moto, viaje, emergencia...</div></div>`;return;}
   el.innerHTML=goals.map((g,i)=>{
-    const pct=Math.min(100,Math.round((g.current/g.target)*100));
-    const rem=Math.max(0,g.target-g.current);
-    const months=g.monthly>0?Math.ceil(rem/g.monthly):null;
+    const target=g.target||0, current=g.current||0, monthly=g.monthly||0;
+    const pct=target>0?Math.min(100,Math.round((current/target)*100)):0;
+    const rem=Math.max(0,target-current);
+    const months=monthly>0?Math.ceil(rem/monthly):null;
     const ico=GOAL_ICONS[g.tipo]||GOAL_ICONS.otro;
     return `<div class="goal-card" style="margin-bottom:0">
       <div class="goal-hdr">
@@ -894,7 +895,7 @@ function renderGoals(){
       <div class="goal-bar"><div class="goal-fill" style="width:${pct}%"></div></div>
       <div class="goal-foot">
         <span>$${fmtK(g.current)} de $${fmtK(g.target)}</span>
-        <span>${months?`~${months} meses`:(g.date||'Sin fecha')}</span>
+        <span>${months?`~${months} meses`:(g.fecha_objetivo||'Sin fecha')}</span>
       </div>
       <div style="display:flex;gap:6px;margin-top:10px">
         ${i>0?`<button onclick="setPrimaryGoal('${g.id}')" style="flex:1;padding:7px;border-radius:9px;background:var(--ink4);border:1px solid var(--rim);color:var(--muted2);font-family:'Geist',sans-serif;font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.5px;cursor:pointer">Hacer principal</button>`:'<div style="flex:1;padding:7px;font-size:10px;color:var(--muted);text-align:center">Meta principal ⭐</div>'}
@@ -913,7 +914,7 @@ function renderTarjetas(){
   const txns=ST.data.transacciones||[];
   if(!ts.length){el.innerHTML=`<div class="empty"><svg viewBox="0 0 24 24" fill="none"><path d="M3 10h18M7 15h1m4 0h1m-7 4h12a3 3 0 003-3V8a3 3 0 00-3-3H6a3 3 0 00-3 3v8a3 3 0 003 3z" stroke-linecap="round" stroke-linejoin="round"/></svg><div class="empty-t">Sin tarjetas</div><div class="empty-s">Sincroniza para ver tus tarjetas.</div></div>`;return;}
   el.innerHTML=ts.map(t=>{
-    const cardTxns=txns.filter(x=>x.tarjeta===t.nombre&&x.fecha_cuota===mes&&x.estado==='ejecutado');
+    const cardTxns=(ST.data.transacciones||[]).filter(x=>x.tarjeta===t.nombre&&x.fecha_cuota===mes&&x.estado==='ejecutado');
     const balance=cardTxns.reduce((s,x)=>s+(parseFloat(x.monto_cuota)||0),0);
     const daysToPayment=calcDaysTo(now,parseInt(t.dia_pago));
     const badgeClass=daysToPayment<=5?'due':'ok';
@@ -970,11 +971,136 @@ async function api(action,data={}){
   const res=await fetch(url,{method:'POST',body:JSON.stringify({action,data})});
   const j=await res.json();if(!j.ok)throw new Error(j.error||'Error');return j.result;
 }
+// ── NORMALIZE: Called once after every getData() response ──────
+// Converts all date fields to YYYY-MM strings, numeric fields to numbers.
+// This is the single fix for ALL zero-values, Invalid Date, and NaN bugs.
+function normDate(val){
+  if(!val) return '';
+  const s = String(val).trim();
+  // Already YYYY-MM
+  if(/^\d{4}-\d{2}$/.test(s)) return s;
+  // YYYY-MM-DD or ISO timestamp
+  if(/^\d{4}-\d{2}/.test(s)) return s.substring(0,7);
+  // Date object serialized as number (Google Sheets serial date)
+  if(/^\d+$/.test(s)){
+    // Excel serial: days since 1900-01-01
+    const d = new Date(Date.UTC(1899,11,30) + parseInt(s)*86400000);
+    return d.toISOString().substring(0,7);
+  }
+  return '';
+}
+function normDateFull(val){
+  if(!val) return '';
+  const s = String(val).trim();
+  if(/^\d{4}-\d{2}-\d{2}$/.test(s)) return s;
+  if(/^\d{4}-\d{2}-\d{2}T/.test(s)) return s.substring(0,10);
+  if(/^\d{4}-\d{2}$/.test(s)) return s+'-01';
+  if(/^\d+$/.test(s)){
+    const d = new Date(Date.UTC(1899,11,30) + parseInt(s)*86400000);
+    return d.toISOString().substring(0,10);
+  }
+  return '';
+}
+function normNum(val){ const n=parseFloat(val); return isNaN(n)?0:n; }
+function normStr(val){ return val==null||val===undefined?'':String(val).trim(); }
+
+function normalizeData(raw){
+  // Normalize transactions
+  (raw.transacciones||[]).forEach(t=>{
+    t.fecha_compra   = normDateFull(t.fecha_compra);
+    t.fecha_cuota    = normDate(t.fecha_cuota);
+    t.monto_cuota    = normNum(t.monto_cuota);
+    t.monto_total_compra = normNum(t.monto_total_compra);
+    t.tasa_interes   = normNum(t.tasa_interes);
+    t.costo_interes_total = normNum(t.costo_interes_total);
+    t.cuota_numero   = normNum(t.cuota_numero)||1;
+    t.cuotas_total   = normNum(t.cuotas_total)||1;
+    t.descripcion    = normStr(t.descripcion);
+    t.subcategoria   = normStr(t.subcategoria);
+    t.categoria      = normStr(t.categoria);
+    t.tarjeta        = normStr(t.tarjeta);
+    t.medio_pago     = normStr(t.medio_pago);
+    t.estado         = normStr(t.estado)||'ejecutado';
+    t.nota           = normStr(t.nota);
+    t.id             = normStr(t.id);
+    t.id_compra_origen = normStr(t.id_compra_origen);
+  });
+  // Normalize ingresos
+  (raw.ingresos||[]).forEach(t=>{
+    t.fecha      = normDateFull(t.fecha);
+    t.mes_cierre = normDate(t.mes_cierre||t.fecha);
+    t.monto      = normNum(t.monto);
+    t.descripcion = normStr(t.descripcion);
+    t.subcategoria = normStr(t.subcategoria);
+    t.medio_pago  = normStr(t.medio_pago);
+    t.nota        = normStr(t.nota);
+    t.id          = normStr(t.id);
+  });
+  // Normalize ahorros
+  (raw.ahorros||[]).forEach(t=>{
+    t.fecha      = normDateFull(t.fecha);
+    t.mes_cierre = normDate(t.mes_cierre||t.fecha);
+    t.monto      = normNum(t.monto);
+    t.subcategoria = normStr(t.subcategoria);
+    t.destino    = normStr(t.destino);
+    t.nota       = normStr(t.nota);
+    t.id         = normStr(t.id);
+  });
+  // Normalize tarjetas
+  (raw.tarjetas||[]).forEach(t=>{
+    t.dia_corte    = normNum(t.dia_corte);
+    t.dia_pago     = normNum(t.dia_pago);
+    t.tasa_mensual = normNum(t.tasa_mensual);
+    t.nombre       = normStr(t.nombre);
+    t.banco        = normStr(t.banco);
+    t.id           = normStr(t.id);
+  });
+  // Normalize resumen
+  (raw.resumen||[]).forEach(r=>{
+    r.mes                   = normDate(r.mes);
+    r.ingresos_total        = normNum(r.ingresos_total);
+    r.gastos_ejecutados     = normNum(r.gastos_ejecutados);
+    r.gastos_comprometidos  = normNum(r.gastos_comprometidos);
+    r.ahorros_total         = normNum(r.ahorros_total);
+    r.intereses_total       = normNum(r.intereses_total);
+    r.sobrante              = normNum(r.sobrante);
+  });
+  // Normalize goals
+  (raw.goals||[]).forEach(g=>{
+    g.nombre         = normStr(g.nombre);
+    g.tipo           = normStr(g.tipo)||'ahorro';
+    g.target         = normNum(g.target);
+    g.current        = normNum(g.current);
+    g.monthly        = normNum(g.monthly);
+    g.fecha_objetivo = normStr(g.fecha_objetivo);
+    g.nota           = normStr(g.nota);
+    g.status         = normStr(g.status)||'active';
+    g.id             = normStr(g.id);
+  });
+  // Normalize assets
+  (raw.assets||[]).forEach(a=>{
+    a.nombre    = normStr(a.nombre);
+    a.categoria = normStr(a.categoria);
+    a.value     = normNum(a.value);
+    a.nota      = normStr(a.nota);
+    a.id        = normStr(a.id);
+  });
+  // Normalize liabilities
+  (raw.liabilities||[]).forEach(l=>{
+    l.nombre    = normStr(l.nombre);
+    l.categoria = normStr(l.categoria);
+    l.value     = normNum(l.value);
+    l.nota      = normStr(l.nota);
+    l.id        = normStr(l.id);
+  });
+  return raw;
+}
+
 async function syncData(){
   setSS('spin');
   try{
     const p=getPend();if(p.length)await api('sync',{pendientes:p});localStorage.removeItem(K.PEND);
-    const r=await api('getData',{});ST.data=r;saveLocal();renderHome();setSS('ok');
+    const r=await api('getData',{});ST.data=normalizeData(r);saveLocal();renderHome();setSS('ok');
   }catch(e){setSS('err');loadLocal();}
 }
 function setSS(s){const d=document.getElementById('sDot'),l=document.getElementById('sLbl');d.className='s-dot'+(s==='spin'?' spin':s==='err'?' err':'');l.textContent=s==='spin'?'Sync...':s==='err'?'Error':'Sync';}
@@ -982,7 +1108,7 @@ function saveLocal(){
   // Cache full state including goals/assets/liabilities for offline use
   localStorage.setItem(K.DATA,JSON.stringify(ST.data));
 }
-function loadLocal(){const d=localStorage.getItem(K.DATA);if(d){ST.data=JSON.parse(d);renderHome();}}
+function loadLocal(){const d=localStorage.getItem(K.DATA);if(d){ST.data=normalizeData(JSON.parse(d));renderHome();}}
 function addPend(x){const p=getPend();p.push(x);localStorage.setItem(K.PEND,JSON.stringify(p));}
 function remPend(id){const p=getPend().filter(x=>x.local_id!==id);localStorage.setItem(K.PEND,JSON.stringify(p));}
 function getPend(){const p=localStorage.getItem(K.PEND);return p?JSON.parse(p):[];}
@@ -994,16 +1120,20 @@ function renderHome(){
   document.getElementById('heroMonth').textContent=mn.charAt(0).toUpperCase()+mn.slice(1);
   document.getElementById('hdrSub').textContent=mn.charAt(0).toUpperCase()+mn.slice(1);
 
-  const r=(ST.data.resumen||[]).find(x=>x.mes===mes)||{};
+  // Compute directly from raw data — always matches Historial
+  const inc=(ST.data.ingresos||[]).filter(t=>t.mes_cierre===mes).reduce((s,t)=>s+t.monto,0);
+  const exp=(ST.data.transacciones||[]).filter(t=>t.fecha_cuota===mes&&t.estado==='ejecutado').reduce((s,t)=>s+t.monto_cuota,0);
+  const sav=(ST.data.ahorros||[]).filter(t=>t.mes_cierre===mes).reduce((s,t)=>s+t.monto,0);
+  const com=(ST.data.transacciones||[]).filter(t=>t.estado==='comprometido'&&t.fecha_cuota>mes).reduce((s,t)=>s+t.monto_cuota,0);
   const rPrev=(ST.data.resumen||[]).find(x=>x.mes===prevMes(mes))||{};
-  const inc=parseFloat(r.ingresos_total)||0,exp=parseFloat(r.gastos_ejecutados)||0,sav=parseFloat(r.ahorros_total)||0,com=parseFloat(r.gastos_comprometidos)||0;
   const disp=Math.max(0,inc-exp-sav);
 
   // Net Worth = (Savings + Manual Assets) − (Committed Installments + Manual Liabilities)
-  const totalSav=(ST.data.ahorros||[]).reduce((s,x)=>s+(parseFloat(x.monto)||0),0);
-  const committedLiab=(ST.data.transacciones||[]).filter(t=>t.estado==='comprometido').reduce((s,x)=>s+(parseFloat(x.monto_cuota)||0),0);
-  const manualAssetsVal=getWealthAssets().reduce((s,x)=>s+(parseFloat(x.value)||0),0);
-  const manualLiabVal=getWealthLiabilities().reduce((s,x)=>s+(parseFloat(x.value)||0),0);
+  // Use same direct calculation as Dashboard for consistency
+  const totalSav=(ST.data.ahorros||[]).reduce((s,x)=>s+x.monto,0);
+  const committedLiab=(ST.data.transacciones||[]).filter(t=>t.estado==='comprometido').reduce((s,x)=>s+x.monto_cuota,0);
+  const manualAssetsVal=getWealthAssets().reduce((s,x)=>s+x.value,0);
+  const manualLiabVal=getWealthLiabilities().reduce((s,x)=>s+x.value,0);
   const totalAssets=totalSav+manualAssetsVal;
   const totalLiab=committedLiab+manualLiabVal;
   const nw=totalAssets-totalLiab;
@@ -1038,10 +1168,12 @@ function renderMainGoal(){
   const el=document.getElementById('mainGoalCard');
   if(!el)return;
   if(!goals.length){el.innerHTML='';return;}
-  const g=goals[0]; // Primary goal = first
-  const pct=Math.min(100,Math.round((g.current/g.target)*100));
-  const rem=Math.max(0,g.target-g.current);
-  const months=g.monthly>0?Math.ceil(rem/g.monthly):null;
+  const g=goals[0];
+  if(!g||!g.nombre){el.innerHTML='';return;}
+  const target=g.target||0, current=g.current||0, monthly=g.monthly||0;
+  const pct=target>0?Math.min(100,Math.round((current/target)*100)):0;
+  const rem=Math.max(0,target-current);
+  const months=monthly>0?Math.ceil(rem/monthly):null;
   const ico=GOAL_ICONS[g.tipo]||GOAL_ICONS.otro;
   el.innerHTML=`<div style="margin:0 22px 0">
     <div style="background:var(--ink3);border:1px solid var(--rim2);border-radius:var(--r);padding:18px;cursor:pointer" onclick="navigate('goals')">
@@ -1060,7 +1192,7 @@ function renderMainGoal(){
       </div>
       <div style="display:flex;justify-content:space-between;font-size:11px;color:var(--muted);font-weight:500">
         <span>$${fmtK(g.current)} <span style="color:var(--muted)">de $${fmtK(g.target)}</span></span>
-        <span style="color:var(--muted2);font-weight:600">${months?`~${months} meses`:(g.date||'')}</span>
+        <span style="color:var(--muted2);font-weight:600">${months?`~${months} meses`:(g.fecha_objetivo||'')}</span>
       </div>
     </div>
   </div>`;
@@ -1076,10 +1208,10 @@ function renderScore(inc,exp,sav,com){
   else tags.push({t:'Aumenta el ahorro',ok:false});
   if(exp>0&&inc>0){const expRate=exp/inc;if(expRate<0.5){score+=15;tags.push({t:'Gastos controlados',ok:true});}else if(expRate<0.7){score+=8;}else tags.push({t:'Gastos elevados',ok:false});}
   if(com>0&&inc>0){const comRate=com/inc;if(comRate>0.4)tags.push({t:'Cuotas altas',ok:false});else if(comRate<0.2){score+=10;}}
-  const goals=getGoals();
+  const goals=getGoals().filter(g=>g&&g.nombre&&g.target>0);
   if(goals.length>0){score+=10;tags.push({t:'Metas activas',ok:true});}
   const topGoal=goals[0];
-  if(topGoal){const topPct=(topGoal.current||0)/(topGoal.target||1);if(topPct>=0.5)tags.push({t:topGoal.nombre.split(' ')[0]+' +50%',ok:true});}
+  if(topGoal&&topGoal.target>0){const topPct=(topGoal.current||0)/topGoal.target;if(topPct>=0.5)tags.push({t:(topGoal.nombre||'Meta').split(' ')[0]+' +50%',ok:true});}
   score=Math.min(99,Math.max(42,score));
   const pct=score/100;const circumference=2*Math.PI*28;
   const offset=circumference*(1-pct);
@@ -1143,7 +1275,9 @@ function txnHTML(t){
   const medio=t.tarjeta||t.medio_pago||'';
   const chip=medio?`<span class="txn-chip">${medio.split(' ')[0]}</span>`:'';
   const cuota=t.cuotas_total>1?`<div class="txn-cuota">${t.cuota_numero}/${t.cuotas_total} cuotas</div>`:'';
-  const fecha=t.fecha_cuota||t.fecha||t.fecha_compra||'';
+  // Format date for display
+  const rawFecha=t.fecha_cuota||t.fecha||t.fecha_compra||'';
+  const fecha=rawFecha.length>=10?rawFecha.substring(0,10):rawFecha;
   return `<div class="txn" onclick='openDet(${JSON.stringify(t)})'>
     <div class="txn-ico"><svg viewBox="0 0 24 24" fill="none" width="15" height="15" stroke="var(--muted2)" stroke-width="1.8">${ico}</svg></div>
     <div class="txn-body"><div class="txn-name">${t.descripcion||cat||'—'}</div><div class="txn-meta">${fecha} ${chip}</div></div>
@@ -1154,12 +1288,17 @@ function txnHTML(t){
 // ── HISTORIAL ────────────────────────────────────────────────
 function renderHist(){
   const all=[
-    ...(ST.data.transacciones||[]).filter(t=>t.estado==='ejecutado').map(t=>({...t,_tab:'Transacciones',_mes:t.fecha_cuota})),
-    ...(ST.data.ingresos||[]).map(t=>({...t,_tab:'Ingresos',tipo:'Ingreso',_mes:t.mes_cierre})),
-    ...(ST.data.ahorros||[]).map(t=>({...t,_tab:'Ahorros',tipo:'Ahorro',_mes:t.mes_cierre})),
+    ...(ST.data.transacciones||[]).filter(t=>t.estado==='ejecutado'&&t.fecha_cuota).map(t=>({...t,_tab:'Transacciones',_mes:t.fecha_cuota})),
+    ...(ST.data.ingresos||[]).filter(t=>t.mes_cierre).map(t=>({...t,_tab:'Ingresos',tipo:'Ingreso',_mes:t.mes_cierre})),
+    ...(ST.data.ahorros||[]).filter(t=>t.mes_cierre).map(t=>({...t,_tab:'Ahorros',tipo:'Ahorro',_mes:t.mes_cierre})),
   ];
   if(!all.length){document.getElementById('histContent').innerHTML=`<div class="empty" style="padding-top:80px"><svg viewBox="0 0 24 24" fill="none"><path d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" stroke-linecap="round" stroke-linejoin="round"/></svg><div class="empty-t">Sin historial</div><div class="empty-s">Tus movimientos aparecerán aquí.</div></div>`;return;}
-  const byM={};all.forEach(t=>{const m=(t._mes||'').substring(0,7);if(!byM[m])byM[m]=[];byM[m].push(t);});
+  const byM={};all.forEach(t=>{
+    // Normalize _mes — could be full ISO date or already YYYY-MM
+    const raw=t._mes||'';
+    const m=raw.length>=7?raw.substring(0,7):'';
+    if(m&&/^\d{4}-\d{2}$/.test(m)){if(!byM[m])byM[m]=[];byM[m].push(t);}
+  });
   let html='';
   Object.keys(byM).sort((a,b)=>b.localeCompare(a)).forEach(m=>{
     const items=byM[m].sort((a,b)=>new Date(b.fecha_compra||b.fecha)-new Date(a.fecha_compra||a.fecha));
@@ -1174,8 +1313,11 @@ function renderHist(){
 // ── INFORMES ─────────────────────────────────────────────────
 function renderInf(){
   const now=new Date(),mes=`${now.getFullYear()}-${String(now.getMonth()+1).padStart(2,'0')}`;
-  const r=(ST.data.resumen||[]).find(x=>x.mes===mes)||{};
-  const inc=parseFloat(r.ingresos_total)||0,exp=parseFloat(r.gastos_ejecutados)||0,sav=parseFloat(r.ahorros_total)||0;
+  // Compute directly from raw data - same source as History
+  const incR=(ST.data.ingresos||[]).filter(t=>t.mes_cierre===mes).reduce((s,t)=>s+t.monto,0);
+  const expR=(ST.data.transacciones||[]).filter(t=>t.fecha_cuota===mes&&t.estado==='ejecutado').reduce((s,t)=>s+t.monto_cuota,0);
+  const savR=(ST.data.ahorros||[]).filter(t=>t.mes_cierre===mes).reduce((s,t)=>s+t.monto,0);
+  const inc=incR, exp=expR, sav=savR;
   document.getElementById('rptSum').innerHTML=`
     <div class="rpt-ttl">Resumen — ${now.toLocaleDateString('es-CO',{month:'long',year:'numeric'})}</div>
     <div class="rpt-row"><span class="rpt-k">Ingresos</span><span class="rpt-v num" style="color:var(--pos-t)">$${fmt(inc)}</span></div>
@@ -1230,7 +1372,8 @@ async function sendAI(){
   const txns=(ST.data.transacciones||[]).filter(t=>t.fecha_cuota===mes&&t.estado==='ejecutado');
   const cats={};txns.forEach(t=>{cats[t.subcategoria]=(cats[t.subcategoria]||0)+(parseFloat(t.monto_cuota)||0);});
   const goals=getGoals();
-  const totalSav=(ST.data.ahorros||[]).reduce((s,x)=>s+(parseFloat(x.monto)||0),0);
+  // Use same direct calculation as Dashboard for consistency
+  const totalSav=(ST.data.ahorros||[]).reduce((s,x)=>s+x.monto,0);
   const sys=`Eres Kasa AI, asesor de wealth management personal de Juan, basado en Medellín, Colombia. Respondes en español, de forma directa, personalizada y útil. Sin markdown excesivo.
 
 DATOS FINANCIEROS (${mes}):
@@ -1352,7 +1495,7 @@ function openCardModal(tarjeta){
   const now=new Date();
   const mes=`${now.getFullYear()}-${String(now.getMonth()+1).padStart(2,'0')}`;
   const txns=(ST.data.transacciones||[]).filter(t=>t.tarjeta===tarjeta&&t.fecha_cuota===mes&&t.estado==='ejecutado');
-  const balance=txns.reduce((s,t)=>s+(parseFloat(t.monto_cuota)||0),0);
+  const balance=txns.reduce((s,t)=>s+t.monto_cuota,0);
   const t=ST.data.tarjetas?.find(x=>x.nombre===tarjeta)||{};
   document.getElementById('cardModalName').textContent=tarjeta;
   document.getElementById('cardModalSub').textContent=`Corte día ${t.dia_corte||'—'} · Pago día ${t.dia_pago||'—'} · Tasa ${t.tasa_mensual?(parseFloat(t.tasa_mensual)*100).toFixed(1)+'%':'—'}`;
@@ -1391,15 +1534,15 @@ function openDrillDown(type){
   if(type==='ingreso'){
     items=(ST.data.ingresos||[]).filter(t=>t.mes_cierre===mes).map(t=>({...t,_tab:'Ingresos',tipo:'Ingreso'}));
     title='Ingresos del mes';color='var(--pos-t)';
-    total=items.reduce((s,t)=>s+(parseFloat(t.monto)||0),0);
+    total=items.reduce((s,t)=>s+t.monto,0);
   }else if(type==='gasto'){
     items=(ST.data.transacciones||[]).filter(t=>t.fecha_cuota===mes&&t.estado==='ejecutado').map(t=>({...t,_tab:'Transacciones'}));
     title='Gastos del mes';color='var(--neg-t)';
-    total=items.reduce((s,t)=>s+(parseFloat(t.monto_cuota)||0),0);
+    total=items.reduce((s,t)=>s+t.monto_cuota,0);
   }else{
     items=(ST.data.ahorros||[]).filter(t=>t.mes_cierre===mes).map(t=>({...t,_tab:'Ahorros',tipo:'Ahorro'}));
     title='Ahorros del mes';color='var(--cream2)';
-    total=items.reduce((s,t)=>s+(parseFloat(t.monto)||0),0);
+    total=items.reduce((s,t)=>s+t.monto,0);
   }
 
   document.getElementById('drillTitle').textContent=title;
