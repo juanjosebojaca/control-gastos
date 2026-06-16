@@ -497,6 +497,14 @@ option{background:var(--ink2)}
         <div class="qs-v warn num" id="qCom">$0</div>
       </div>
     </div>
+    <!-- AVAILABLE MONEY BANNER -->
+    <div style="margin:10px 22px 0;background:var(--ink3);border:1px solid var(--rim2);border-radius:var(--r-sm);padding:13px 18px;display:flex;align-items:center;justify-content:space-between">
+      <div>
+        <div style="font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:1.5px;color:var(--muted)">Dinero disponible</div>
+        <div style="font-size:11px;color:var(--muted);margin-top:2px;font-weight:400">Ingresos − Gastos − Ahorros</div>
+      </div>
+      <div style="font-size:26px;font-weight:900;letter-spacing:-1px;font-variant-numeric:tabular-nums" id="qDisponible">$0</div>
+    </div>
 
     <!-- HEALTH SCORE -->
     <div class="score-card" id="scoreCard">
@@ -667,7 +675,7 @@ option{background:var(--ink2)}
       <svg viewBox="0 0 24 24" fill="none"><path d="M3 10h18M7 15h1m4 0h1m-7 4h12a3 3 0 003-3V8a3 3 0 00-3-3H6a3 3 0 00-3 3v8a3 3 0 003 3z" stroke-linecap="round" stroke-linejoin="round"/></svg>
       Tarjetas
     </button>
-    <button class="nb" id="nb-ai" onclick="navigate('ai')">
+    <button class="nb" id="nb-ai" onclick="navigate('ai')" style="display:none" aria-hidden="true">
       <svg viewBox="0 0 24 24" fill="none"><path d="M9.663 17h4.673M12 3v1m6.364 1.636l-.707.707M21 12h-1M4 12H3m3.343-5.657l-.707-.707m2.828 9.9a5 5 0 117.072 0l-.548.547A3.374 3.374 0 0014 18.469V19a2 2 0 11-4 0v-.531c0-.895-.356-1.754-.988-2.386l-.548-.547z" stroke-linecap="round" stroke-linejoin="round"/></svg>
       Kasa AI
     </button>
@@ -737,6 +745,29 @@ option{background:var(--ink2)}
     <div style="font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:1.5px;color:var(--muted);margin-bottom:8px">Transacciones</div>
     <div style="background:var(--ink);border:1px solid var(--rim);border-radius:14px;overflow:hidden" id="drillTxns"></div>
   </div>
+</div>
+
+<!-- CARD MANAGEMENT SHEET -->
+<div class="overlay" id="cardMgmtOverlay" onclick="closeCardMgmt()"></div>
+<div class="sheet" id="cardMgmtSheet">
+  <div class="sheet-pill"></div>
+  <div class="sheet-hdr">
+    <div class="sheet-title" id="cardMgmtTitle">Editar tarjeta</div>
+    <button class="sheet-x" onclick="closeCardMgmt()"><svg viewBox="0 0 24 24" fill="none"><path d="M6 18L18 6M6 6l12 12" stroke-linecap="round" stroke-linejoin="round"/></svg></button>
+  </div>
+  <div class="fs">
+    <input type="hidden" id="cardMgmtId">
+    <div class="fg"><label class="fl">Nombre de la tarjeta</label><input type="text" class="fi" id="cardMgmtNombre" placeholder="Ej: Bancolombia AMEX"></div>
+    <div class="fg"><label class="fl">Banco</label><input type="text" class="fi" id="cardMgmtBanco" placeholder="Ej: Bancolombia"></div>
+    <div class="grid2">
+      <div class="fg"><label class="fl">Día de corte</label><input type="number" class="fi" id="cardMgmtCorte" min="1" max="31" placeholder="15"></div>
+      <div class="fg"><label class="fl">Día de pago</label><input type="number" class="fi" id="cardMgmtPago" min="1" max="31" placeholder="1"></div>
+    </div>
+    <div class="fg"><label class="fl">Tasa mensual (%)</label><input type="number" class="fi" id="cardMgmtTasa" step="0.1" min="0" max="10" placeholder="1.9"></div>
+    <div class="fg"><label class="fl">Límite de crédito (COP)</label><div class="fi-wrap"><span class="fi-pre">$</span><input type="number" class="fi" id="cardMgmtLimite" placeholder="0" style="padding-left:26px"></div></div>
+  </div>
+  <button class="btn-p" onclick="saveCardMgmt()" style="margin:16px 20px 0;width:calc(100% - 40px)">Guardar cambios</button>
+  <button onclick="deleteCard()" style="display:block;width:calc(100% - 40px);margin:10px 20px 0;padding:14px;border-radius:12px;background:var(--neg-d);border:1.5px solid rgba(122,48,48,.4);color:var(--neg-t);font-family:'Geist',sans-serif;font-size:12px;font-weight:700;letter-spacing:.5px;text-transform:uppercase;cursor:pointer">Eliminar tarjeta</button>
 </div>
 
 <!-- CARD DRILL-DOWN MODAL -->
@@ -1154,6 +1185,9 @@ function renderHome(){
   document.getElementById('qInc').textContent='$'+fmtK(inc);
   document.getElementById('qExp').textContent='$'+fmtK(exp);
   document.getElementById('qCom').textContent='$'+fmtK(com);
+  const disponible=inc-exp-sav;
+  const dispEl=document.getElementById('qDisponible');
+  if(dispEl){dispEl.textContent=(disponible>=0?'':'−')+'$'+fmtK(Math.abs(Math.round(disponible)));dispEl.style.color=disponible>=0?'var(--pos-t)':'var(--neg-t)';}
   document.getElementById('sSav2').textContent='$'+fmtK(sav);
 
   renderScore(inc,exp,sav,com);
@@ -1540,6 +1574,57 @@ function openCardModal(tarjeta){
   document.getElementById('cardModal').classList.add('on');
 }
 function closeCardModal(){document.getElementById('cardModal').classList.remove('on');}
+
+// ── CARD MANAGEMENT ──────────────────────────────────────────
+function openCardMgmt(id){
+  const t=(ST.data.tarjetas||[]).find(x=>x.id===id);
+  if(!t)return;
+  document.getElementById('cardMgmtId').value=id;
+  document.getElementById('cardMgmtNombre').value=t.nombre||'';
+  document.getElementById('cardMgmtBanco').value=t.banco||'';
+  document.getElementById('cardMgmtCorte').value=t.dia_corte||'';
+  document.getElementById('cardMgmtPago').value=t.dia_pago||'';
+  document.getElementById('cardMgmtTasa').value=t.tasa_mensual?(t.tasa_mensual*100).toFixed(1):'';
+  document.getElementById('cardMgmtLimite').value=t.limite||'';
+  document.getElementById('cardMgmtTitle').textContent='Editar — '+(t.nombre||'Tarjeta');
+  document.getElementById('cardMgmtOverlay').classList.add('on');
+  document.getElementById('cardMgmtSheet').classList.add('on');
+}
+function closeCardMgmt(){
+  document.getElementById('cardMgmtOverlay').classList.remove('on');
+  document.getElementById('cardMgmtSheet').classList.remove('on');
+}
+async function saveCardMgmt(){
+  const id=document.getElementById('cardMgmtId').value;
+  const fields={
+    nombre:    document.getElementById('cardMgmtNombre').value.trim(),
+    banco:     document.getElementById('cardMgmtBanco').value.trim(),
+    dia_corte: parseInt(document.getElementById('cardMgmtCorte').value)||1,
+    dia_pago:  parseInt(document.getElementById('cardMgmtPago').value)||1,
+    tasa_mensual: parseFloat(document.getElementById('cardMgmtTasa').value)/100||0,
+    limite:    parseFloat(document.getElementById('cardMgmtLimite').value)||0
+  };
+  if(!fields.nombre){toast('El nombre es requerido','er');return;}
+  try{
+    await api('editRecord',{id,tab:'Tarjetas',fields});
+    await syncData();
+    closeCardMgmt();
+    navigate('tarjetas');
+    toast('Tarjeta actualizada','ok');
+  }catch(e){toast('Error guardando: '+e.message,'er');}
+}
+async function deleteCard(){
+  const id=document.getElementById('cardMgmtId').value;
+  const name=document.getElementById('cardMgmtNombre').value;
+  if(!confirm('¿Eliminar "'+name+'"? Las transacciones históricas se conservan.'))return;
+  try{
+    await api('deleteRecord',{id,tab:'Tarjetas',modo:'solo_esta'});
+    await syncData();
+    closeCardMgmt();
+    navigate('tarjetas');
+    toast('Tarjeta eliminada','ok');
+  }catch(e){toast('Error eliminando: '+e.message,'er');}
+}
 
 // ── CONFIG ───────────────────────────────────────────────────
 async function saveAutos(){
