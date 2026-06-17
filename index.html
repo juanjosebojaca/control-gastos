@@ -72,7 +72,7 @@ html,body{height:100%;width:100%;background:var(--ink);color:var(--cream);font-f
 .nb.on{color:var(--cream2)}
 .nb.on svg{stroke:var(--cream2)}
 .nb-add{flex:0 0 58px;display:flex;align-items:center;justify-content:center;padding-bottom:var(--safe-b)}
-.add-btn{width:46px;height:46px;border-radius:50%;background:var(--cream);border:none;cursor:pointer;display:flex;align-items:center;justify-content:center;box-shadow:0 0 0 1px rgba(220,209,187,.2),0 6px 18px rgba(220,209,187,.1);transition:transform .15s;margin-bottom:6px}
+.add-btn{width:46px;height:46px;border-radius:50%;background:var(--cream);border:none;cursor:pointer;display:flex;align-items:center;justify-content:center;box-shadow:0 0 0 1px rgba(220,209,187,.2),0 6px 18px rgba(220,209,187,.1);transition:transform .15s;margin-bottom:8px}
 .add-btn:active{transform:scale(.93)}
 .add-btn svg{stroke:var(--ink);stroke-width:2.5;width:19px;height:19px}
 
@@ -92,7 +92,7 @@ html,body{height:100%;width:100%;background:var(--ink);color:var(--cream);font-f
 .hero-nw{padding:28px 22px 24px;border-bottom:1px solid var(--rim)}
 .hero-eyebrow{font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:1.8px;color:var(--muted);margin-bottom:10px;display:flex;align-items:center;gap:6px}
 .hero-eyebrow-dot{width:4px;height:4px;border-radius:50%;background:var(--muted);opacity:.4}
-.nw-amount{font-size:50px;font-weight:900;color:var(--cream);line-height:1;letter-spacing:-2.5px;margin-bottom:12px}
+.nw-amount{font-size:clamp(36px,11vw,52px);font-weight:900;color:var(--cream);line-height:1;letter-spacing:-2px;margin-bottom:12px}
 .nw-cur{font-size:24px;font-weight:600;color:var(--muted2);vertical-align:top;margin-top:9px;display:inline-block;margin-right:2px;letter-spacing:-0.5px}
 .nw-meta{display:flex;gap:10px;flex-wrap:wrap;align-items:center}
 .nw-badge{display:inline-flex;align-items:center;gap:4px;padding:4px 10px;border-radius:20px;font-size:11px;font-weight:700;letter-spacing:.2px}
@@ -298,7 +298,7 @@ html,body{height:100%;width:100%;background:var(--ink);color:var(--cream);font-f
 /* ── SHEET ── */
 .overlay{display:none;position:fixed;inset:0;background:rgba(0,0,0,.72);z-index:200;backdrop-filter:blur(10px);-webkit-backdrop-filter:blur(10px)}
 .overlay.on{display:block}
-.sheet{position:fixed;bottom:0;left:0;right:0;z-index:201;background:var(--ink2);border-radius:26px 26px 0 0;border-top:1px solid var(--rim2);transform:translateY(100%);transition:transform .38s cubic-bezier(.32,.72,0,1);max-height:94vh;overflow-y:auto;padding-bottom:calc(28px + var(--safe-b))}
+.sheet{position:fixed;bottom:0;left:0;right:0;z-index:201;background:var(--ink2);border-radius:26px 26px 0 0;border-top:1px solid var(--rim2);transform:translateY(100%);transition:transform .38s cubic-bezier(.32,.72,0,1);max-height:92dvh;overflow-y:auto;padding-bottom:calc(28px + var(--safe-b))}
 .sheet.on{transform:translateY(0)}
 .sheet-pill{width:36px;height:4px;background:var(--rim2);border-radius:2px;margin:12px auto 0}
 .sheet-hdr{padding:18px 22px 8px;display:flex;align-items:center;justify-content:space-between}
@@ -675,10 +675,7 @@ option{background:var(--ink2)}
       <svg viewBox="0 0 24 24" fill="none"><path d="M3 10h18M7 15h1m4 0h1m-7 4h12a3 3 0 003-3V8a3 3 0 00-3-3H6a3 3 0 00-3 3v8a3 3 0 003 3z" stroke-linecap="round" stroke-linejoin="round"/></svg>
       Tarjetas
     </button>
-    <button class="nb" id="nb-ai" onclick="navigate('ai')" style="display:none" aria-hidden="true">
-      <svg viewBox="0 0 24 24" fill="none"><path d="M9.663 17h4.673M12 3v1m6.364 1.636l-.707.707M21 12h-1M4 12H3m3.343-5.657l-.707-.707m2.828 9.9a5 5 0 117.072 0l-.548.547A3.374 3.374 0 0014 18.469V19a2 2 0 11-4 0v-.531c0-.895-.356-1.754-.988-2.386l-.548-.547z" stroke-linecap="round" stroke-linejoin="round"/></svg>
-      Kasa AI
-    </button>
+    <!-- nb-ai removed — AI accessible via Home card; sAi screen preserved for future -->
   </nav>
 </div>
 
@@ -697,7 +694,7 @@ option{background:var(--ink2)}
     <div class="fg"><label class="fl">Subcategoría</label><select class="fi" id="fCat"></select></div>
     <div class="fg" id="fDestG" style="display:none"><label class="fl">Destino del ahorro</label><select class="fi" id="fDest"><option>Bolsillo Bancolombia — Fondo emergencia</option><option>Cuenta Bancolombia ahorro</option><option>Cuenta Nu Bank alto rendimiento</option><option>Viaje</option><option>Inversión</option><option>General</option></select></div>
     <div class="fg"><label class="fl">Monto (COP)</label><div class="fi-wrap"><span class="fi-pre">$</span><input type="number" class="fi amt" id="fMonto" placeholder="0" oninput="updP()"></div></div>
-    <div class="fg" id="fMedioG"><label class="fl">Medio de pago</label><select class="fi" id="fMedio"><option value="Efectivo">Efectivo</option><option value="Transferencia">Transferencia</option><option value="Bancolombia AMEX">Bancolombia AMEX</option><option value="Nu Bank">Nu Bank</option><option value="Bancolombia Visa Infinite">Bancolombia Visa Infinite</option><option value="Bancolombia Mastercard Black">Bancolombia Mastercard Black</option><option value="Davivienda">Davivienda</option></select></div>
+    <div class="fg" id="fMedioG"><label class="fl">Medio de pago</label><select class="fi" id="fMedio" onchange="onMedioChange()"><option value="Efectivo">Efectivo</option><option value="Transferencia">Transferencia</option><option value="Bancolombia AMEX">Bancolombia AMEX</option><option value="Nu Bank">Nu Bank</option><option value="Bancolombia Visa Infinite">Bancolombia Visa Infinite</option><option value="Bancolombia Mastercard Black">Bancolombia Mastercard Black</option><option value="Davivienda">Davivienda</option></select></div>
     <div class="fg" id="fCuotasG" style="display:none">
       <div class="grid2"><div><label class="fl">Cuotas</label><input type="number" class="fi" id="fCuotas" value="1" min="1" max="48" oninput="updP()"></div><div><label class="fl">Tasa mensual %</label><input type="number" class="fi" id="fTasa" value="1.9" step="0.1" oninput="updP()"></div></div>
       <div id="cqP" style="display:none" class="cq"><div class="cq-lbl">Resumen de cuotas</div><div class="cq-row"><span class="cq-k">Cuota mensual</span><span class="cq-v" id="cqC">—</span></div><div class="cq-row"><span class="cq-k">Total a pagar</span><span class="cq-v" id="cqT">—</span></div><div class="cq-row"><span class="cq-k">Intereses</span><span class="cq-v" id="cqI">—</span></div></div>
@@ -854,10 +851,23 @@ function setType(t){
   document.getElementById('fCat').innerHTML=CATS[t].map(c=>`<option value="${c}">${c}</option>`).join('');
   document.getElementById('fMedioG').style.display=t==='s'?'none':'';
   document.getElementById('fCuotasG').style.display=t==='g'?'':'none';
+  if(t==='g')setTimeout(onMedioChange,0);
   document.getElementById('fDestG').style.display=t==='s'?'':'none';
   if(t!=='g')document.getElementById('cqP').style.display='none';
 }
 function togR(){document.getElementById('fFreqG').style.display=document.getElementById('fRecur').checked?'':'none';}
+const CC_MEDIOS=['Bancolombia AMEX','Nu Bank','Bancolombia Visa Infinite','Bancolombia Mastercard Black','Davivienda'];
+function isCreditCard(medio){return CC_MEDIOS.includes(medio);}
+function onMedioChange(){
+  if(ST.type!=='g')return;
+  const medio=document.getElementById('fMedio').value;
+  const isCC=isCreditCard(medio);
+  document.getElementById('fCuotasG').style.display=isCC?'':'none';
+  if(!isCC){
+    document.getElementById('fCuotas').value='1';
+    document.getElementById('cqP').style.display='none';
+  }
+}
 function updP(){
   if(ST.type!=='g')return;
   const m=parseFloat(document.getElementById('fMonto').value)||0,c=parseInt(document.getElementById('fCuotas').value)||1,r=parseFloat(document.getElementById('fTasa').value)/100||0;
@@ -878,7 +888,10 @@ async function submitRec(){
   if(!desc||!monto||!fecha){toast('Completa los campos requeridos','er');btn.textContent='Guardar registro';btn.disabled=false;return;}
   let action,data;
   if(t==='i'){action='addIngreso';data={descripcion:desc,subcategoria:cat,monto,fecha,medio_pago:document.getElementById('fMedio').value,nota,recurrente:recur,frecuencia_recurrente:freq};}
-  else if(t==='g'){const cuotas=parseInt(document.getElementById('fCuotas').value)||1,tasa=parseFloat(document.getElementById('fTasa').value)/100||0,tarjeta=document.getElementById('fMedio').value;action='addTransaccion';data={descripcion:desc,categoria:'Gasto',subcategoria:cat,monto_total:monto,fecha_compra:fecha,medio_pago:tarjeta,tarjeta,cuotas_total:cuotas,tasa_interes:tasa,nota,recurrente:recur,frecuencia_recurrente:freq};}
+  else if(t==='g'){const medio=document.getElementById('fMedio').value;
+    const cuotas=isCreditCard(medio)?(parseInt(document.getElementById('fCuotas').value)||1):1;
+    const tasa=isCreditCard(medio)?(parseFloat(document.getElementById('fTasa').value)/100||0):0;
+    const tarjeta=medio;action='addTransaccion';data={descripcion:desc,categoria:'Gasto',subcategoria:cat,monto_total:monto,fecha_compra:fecha,medio_pago:tarjeta,tarjeta,cuotas_total:cuotas,tasa_interes:tasa,nota,recurrente:recur,frecuencia_recurrente:freq};}
   else{action='addAhorro';data={subcategoria:cat,destino:document.getElementById('fDest').value,monto,fecha,nota,automatico:'FALSE'};}
   const lid='l_'+Date.now();addPend({local_id:lid,action,data});
   try{await api(action,data);remPend(lid);await syncData();toast('Registro guardado','ok');closeSheet();}
@@ -1153,8 +1166,10 @@ function renderHome(){
 
   // Compute directly from raw data — always matches Historial
   const inc=(ST.data.ingresos||[]).filter(t=>t.mes_cierre===mes).reduce((s,t)=>s+t.monto,0);
-  // Expenses = purchases made this month (by purchase date), regardless of payment month
+  // Expenses = all purchases this month by purchase date (for reporting)
   const exp=(ST.data.transacciones||[]).filter(t=>{const pm=t.fecha_compra?t.fecha_compra.substring(0,7):t.fecha_cuota;return pm===mes&&t.cuota_numero==1;}).reduce((s,t)=>s+t.monto_total_compra,0);
+  // Non-CC expenses reduce available money immediately; CC purchases are future obligations
+  const nonCCexp=(ST.data.transacciones||[]).filter(t=>{const pm=t.fecha_compra?t.fecha_compra.substring(0,7):t.fecha_cuota;return pm===mes&&t.cuota_numero==1&&!isCreditCard(t.tarjeta||t.medio_pago||'');}).reduce((s,t)=>s+t.monto_total_compra,0);
   const sav=(ST.data.ahorros||[]).filter(t=>t.mes_cierre===mes).reduce((s,t)=>s+t.monto,0);
   const com=(ST.data.transacciones||[]).filter(t=>t.cuota_numero>1||t.estado==='comprometido').reduce((s,t)=>s+t.monto_cuota,0);
   const rPrev=(ST.data.resumen||[]).find(x=>x.mes===prevMes(mes))||{};
@@ -1185,7 +1200,7 @@ function renderHome(){
   document.getElementById('qInc').textContent='$'+fmtK(inc);
   document.getElementById('qExp').textContent='$'+fmtK(exp);
   document.getElementById('qCom').textContent='$'+fmtK(com);
-  const disponible=inc-exp-sav;
+  const disponible=inc-nonCCexp-sav;
   const dispEl=document.getElementById('qDisponible');
   if(dispEl){dispEl.textContent=(disponible>=0?'':'−')+'$'+fmtK(Math.abs(Math.round(disponible)));dispEl.style.color=disponible>=0?'var(--pos-t)':'var(--neg-t)';}
   document.getElementById('sSav2').textContent='$'+fmtK(sav);
