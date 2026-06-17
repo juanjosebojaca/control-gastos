@@ -66,7 +66,9 @@ html,body{height:100%;width:100%;background:var(--ink);color:var(--cream);font-f
 @keyframes pulse{0%,100%{opacity:1}50%{opacity:.3}}
 
 /* ── NAV ── */
-.nav{position:fixed;bottom:0;left:0;right:0;z-index:100;background:var(--ink2);border-top:1px solid var(--rim);display:flex;padding-bottom:var(--safe-b)}
+.nav{position:fixed;bottom:0;left:0;right:0;z-index:100;background:var(--ink2);border-top:1px solid var(--rim);display:flex;align-items:stretch;padding-bottom:var(--safe-b)}
+.nav-left,.nav-right{display:flex;flex:1}
+.nav-left .nb,.nav-right .nb{flex:1}
 .nb{flex:1;display:flex;flex-direction:column;align-items:center;justify-content:center;padding:9px 2px 7px;gap:3px;cursor:pointer;border:none;background:none;color:var(--muted);font-family:'Geist',sans-serif;font-size:8.5px;font-weight:600;letter-spacing:.8px;text-transform:uppercase;transition:color .18s;-webkit-user-select:none;user-select:none}
 .nb svg{width:18px;height:18px;stroke-width:1.6;transition:stroke .18s}
 .nb.on{color:var(--cream2)}
@@ -650,32 +652,36 @@ option{background:var(--ink2)}
 
   <!-- BOTTOM NAV — 6 tabs + add -->
   <nav class="nav">
-    <button class="nb on" id="nb-home" onclick="navigate('home')">
-      <svg viewBox="0 0 24 24" fill="none"><path d="M3 9l9-7 9 7v11a2 2 0 01-2 2H5a2 2 0 01-2-2z" stroke-linecap="round" stroke-linejoin="round"/><polyline points="9 22 9 12 15 12 15 22" stroke-linecap="round" stroke-linejoin="round"/></svg>
-      Inicio
-    </button>
-    <button class="nb" id="nb-historial" onclick="navigate('historial')">
-      <svg viewBox="0 0 24 24" fill="none"><path d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" stroke-linecap="round" stroke-linejoin="round"/></svg>
-      Historial
-    </button>
-    <button class="nb" id="nb-informes" onclick="navigate('informes')">
-      <svg viewBox="0 0 24 24" fill="none"><path d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z" stroke-linecap="round" stroke-linejoin="round"/></svg>
-      Informes
-    </button>
+    <div class="nav-left">
+      <button class="nb on" id="nb-home" onclick="navigate('home')">
+        <svg viewBox="0 0 24 24" fill="none"><path d="M3 9l9-7 9 7v11a2 2 0 01-2 2H5a2 2 0 01-2-2z" stroke-linecap="round" stroke-linejoin="round"/><polyline points="9 22 9 12 15 12 15 22" stroke-linecap="round" stroke-linejoin="round"/></svg>
+        Inicio
+      </button>
+      <button class="nb" id="nb-historial" onclick="navigate('historial')">
+        <svg viewBox="0 0 24 24" fill="none"><path d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" stroke-linecap="round" stroke-linejoin="round"/></svg>
+        Historial
+      </button>
+      <button class="nb" id="nb-informes" onclick="navigate('informes')">
+        <svg viewBox="0 0 24 24" fill="none"><path d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z" stroke-linecap="round" stroke-linejoin="round"/></svg>
+        Informes
+      </button>
+    </div>
     <div class="nb-add">
       <button class="add-btn" onclick="openSheet()">
         <svg viewBox="0 0 24 24" fill="none"><path d="M12 5v14M5 12h14" stroke-linecap="round" stroke-linejoin="round"/></svg>
       </button>
     </div>
-    <button class="nb" id="nb-goals" onclick="navigate('goals')">
-      <svg viewBox="0 0 24 24" fill="none"><circle cx="12" cy="12" r="10" stroke-linecap="round" stroke-linejoin="round"/><circle cx="12" cy="12" r="6" stroke-linecap="round" stroke-linejoin="round"/><circle cx="12" cy="12" r="2" stroke-linecap="round" stroke-linejoin="round"/></svg>
-      Metas
-    </button>
-    <button class="nb" id="nb-tarjetas" onclick="navigate('tarjetas')">
-      <svg viewBox="0 0 24 24" fill="none"><path d="M3 10h18M7 15h1m4 0h1m-7 4h12a3 3 0 003-3V8a3 3 0 00-3-3H6a3 3 0 00-3 3v8a3 3 0 003 3z" stroke-linecap="round" stroke-linejoin="round"/></svg>
-      Tarjetas
-    </button>
-    <!-- nb-ai removed — AI accessible via Home card; sAi screen preserved for future -->
+    <div class="nav-right">
+      <button class="nb" id="nb-goals" onclick="navigate('goals')">
+        <svg viewBox="0 0 24 24" fill="none"><circle cx="12" cy="12" r="10" stroke-linecap="round" stroke-linejoin="round"/><circle cx="12" cy="12" r="6" stroke-linecap="round" stroke-linejoin="round"/><circle cx="12" cy="12" r="2" stroke-linecap="round" stroke-linejoin="round"/></svg>
+        Metas
+      </button>
+      <button class="nb" id="nb-tarjetas" onclick="navigate('tarjetas')">
+        <svg viewBox="0 0 24 24" fill="none"><path d="M3 10h18M7 15h1m4 0h1m-7 4h12a3 3 0 003-3V8a3 3 0 00-3-3H6a3 3 0 00-3 3v8a3 3 0 003 3z" stroke-linecap="round" stroke-linejoin="round"/></svg>
+        Tarjetas
+      </button>
+      <button class="nb" id="nb-config" onclick="navigate('config')" style="display:none" aria-hidden="true">Config</button>
+    </div>
   </nav>
 </div>
 
@@ -742,6 +748,70 @@ option{background:var(--ink2)}
     <div style="font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:1.5px;color:var(--muted);margin-bottom:8px">Transacciones</div>
     <div style="background:var(--ink);border:1px solid var(--rim);border-radius:14px;overflow:hidden" id="drillTxns"></div>
   </div>
+</div>
+
+<!-- EDIT RECORD SHEET -->
+<div class="overlay" id="editOverlay" onclick="closeEditSheet()"></div>
+<div class="sheet" id="editSheet">
+  <div class="sheet-pill"></div>
+  <div class="sheet-hdr">
+    <div class="sheet-title" id="editSheetTitle">Editar registro</div>
+    <button class="sheet-x" onclick="closeEditSheet()"><svg viewBox="0 0 24 24" fill="none"><path d="M6 18L18 6M6 6l12 12" stroke-linecap="round" stroke-linejoin="round"/></svg></button>
+  </div>
+  <div class="fs">
+    <input type="hidden" id="editId">
+    <input type="hidden" id="editTab">
+    <input type="hidden" id="editType">
+    <!-- SHARED FIELDS -->
+    <div class="fg"><label class="fl">Descripción</label><input type="text" class="fi" id="editDesc" placeholder="Descripción"></div>
+    <div class="fg"><label class="fl">Subcategoría</label><select class="fi" id="editCat"></select></div>
+    <div class="fg"><label class="fl">Monto</label><div class="fi-wrap"><span class="fi-pre">$</span><input type="number" class="fi amt" id="editMonto" placeholder="0" oninput="updEditPreview()"></div></div>
+    <div class="fg"><label class="fl">Fecha</label><input type="date" class="fi" id="editFecha"></div>
+    <!-- GASTO-ONLY FIELDS -->
+    <div id="editGastoFields">
+      <div class="fg"><label class="fl">Medio de pago</label><select class="fi" id="editMedio" onchange="onEditMedioChange()">
+        <option value="Efectivo">Efectivo</option>
+        <option value="Transferencia">Transferencia</option>
+        <option value="Bancolombia AMEX">Bancolombia AMEX</option>
+        <option value="Nu Bank">Nu Bank</option>
+        <option value="Bancolombia Visa Infinite">Bancolombia Visa Infinite</option>
+        <option value="Bancolombia Mastercard Black">Bancolombia Mastercard Black</option>
+        <option value="Davivienda">Davivienda</option>
+      </select></div>
+      <div id="editCuotasGroup">
+        <div class="grid2">
+          <div class="fg"><label class="fl">N° cuotas</label><input type="number" class="fi" id="editCuotas" min="1" max="48" oninput="updEditPreview()"></div>
+          <div class="fg"><label class="fl">Tasa mensual %</label><input type="number" class="fi" id="editTasa" step="0.1" oninput="updEditPreview()"></div>
+        </div>
+        <div id="editCqPreview" class="cq" style="display:none">
+          <div class="cq-lbl">Resumen de cuotas</div>
+          <div class="cq-row"><span class="cq-k">Cuota mensual</span><span class="cq-v" id="editCqC">—</span></div>
+          <div class="cq-row"><span class="cq-k">Total a pagar</span><span class="cq-v" id="editCqT">—</span></div>
+          <div class="cq-row"><span class="cq-k">Intereses</span><span class="cq-v" id="editCqI">—</span></div>
+        </div>
+      </div>
+    </div>
+    <!-- AHORRO-ONLY FIELDS -->
+    <div class="fg" id="editDestinoGroup" style="display:none">
+      <label class="fl">Destino del ahorro</label>
+      <select class="fi" id="editDestino">
+        <option>Bolsillo Bancolombia — Fondo emergencia</option>
+        <option>Cuenta Bancolombia ahorro</option>
+        <option>Cuenta Nu Bank alto rendimiento</option>
+        <option>Viaje</option><option>Inversión</option><option>General</option>
+      </select>
+    </div>
+    <!-- INGRESO-ONLY FIELDS -->
+    <div class="fg" id="editMedioIngresoGroup" style="display:none">
+      <label class="fl">Medio de pago</label>
+      <select class="fi" id="editMedioIngreso">
+        <option value="Transferencia">Transferencia</option>
+        <option value="Efectivo">Efectivo</option>
+      </select>
+    </div>
+    <div class="fg"><label class="fl">Nota (opcional)</label><input type="text" class="fi" id="editNota" placeholder="Nota adicional..."></div>
+  </div>
+  <button class="btn-p" onclick="saveEditRecord()" style="margin:16px 20px 0;width:calc(100% - 40px)">Guardar cambios</button>
 </div>
 
 <!-- CARD MANAGEMENT SHEET -->
@@ -957,7 +1027,7 @@ function renderTarjetas(){
   const mes=`${now.getFullYear()}-${String(now.getMonth()+1).padStart(2,'0')}`;
   const txns=ST.data.transacciones||[];
   if(!ts.length){el.innerHTML=`<div class="empty"><svg viewBox="0 0 24 24" fill="none"><path d="M3 10h18M7 15h1m4 0h1m-7 4h12a3 3 0 003-3V8a3 3 0 00-3-3H6a3 3 0 00-3 3v8a3 3 0 003 3z" stroke-linecap="round" stroke-linejoin="round"/></svg><div class="empty-t">Sin tarjetas</div><div class="empty-s">Sincroniza para ver tus tarjetas.</div></div>`;return;}
-  el.innerHTML=ts.map(t=>{
+  el.innerHTML=ts.filter(t=>t.nombre&&t.id).map(t=>{
     const cardTxns=(ST.data.transacciones||[]).filter(x=>{const pm=x.fecha_compra?x.fecha_compra.substring(0,7):x.fecha_cuota;return x.tarjeta===t.nombre&&pm===mes&&x.cuota_numero==1;});
     const balance=cardTxns.reduce((s,x)=>s+(parseFloat(x.monto_cuota)||0),0);
     const daysToPayment=calcDaysTo(now,parseInt(t.dia_pago));
@@ -974,15 +1044,12 @@ function renderTarjetas(){
       <div class="cc-balance num">$${fmtK(balance)}</div>
       <div style="font-size:10px;color:var(--muted);margin-bottom:12px;font-weight:500">Gastado este ciclo</div>
       <div class="cc-details">
-        <div class="cc-detail"><div class="cc-dl">Día de corte</div><div class="cc-dv">Día ${t.dia_corte}</div></div>
-        <div class="cc-detail"><div class="cc-dl">Día de pago</div><div class="cc-dv">Día ${t.dia_pago}</div></div>
-        <div class="cc-detail"><div class="cc-dl">Tasa mensual</div><div class="cc-dv">
-          <input type="number" value="${(parseFloat(t.tasa_mensual)*100).toFixed(1)}" step="0.1" min="0" max="5"
-            style="width:44px;background:transparent;border:none;border-bottom:1px solid var(--rim2);color:var(--cream2);font-size:13px;font-weight:700;text-align:center;outline:none;font-family:'Geist',sans-serif;font-variant-numeric:tabular-nums"
-            onchange="updTasa('${t.id}',this.value)">%
-        </div></div>
+        <div class="cc-detail"><div class="cc-dl">Día de corte</div><div class="cc-dv">Día ${t.dia_corte||'—'}</div></div>
+        <div class="cc-detail"><div class="cc-dl">Día de pago</div><div class="cc-dv">Día ${t.dia_pago||'—'}</div></div>
+        <div class="cc-detail"><div class="cc-dl">Tasa mensual</div><div class="cc-dv">${t.tasa_mensual?(t.tasa_mensual*100).toFixed(1):'—'}%</div></div>
         <div class="cc-detail"><div class="cc-dl">Transacciones</div><div class="cc-dv">${cardTxns.length}</div></div>
       </div>
+      <button onclick="event.stopPropagation();openCardMgmt('${t.id}')" style="margin-top:12px;width:100%;padding:10px;border-radius:10px;background:var(--ink4);border:1px solid var(--rim2);color:var(--cream2);font-family:'Geist',sans-serif;font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.8px;cursor:pointer">✎ Editar tarjeta</button>
     </div>`;
   }).join('<div style="height:10px"></div>');
 
@@ -1487,7 +1554,122 @@ function openDet(t){
   document.getElementById('modal').classList.add('on');
 }
 function closeModal(){document.getElementById('modal').classList.remove('on');}
-function editR(){closeModal();toast('Edición próximamente','');}
+function editR(){
+  closeModal();
+  const t=ST.sel;
+  if(!t)return;
+  const isI=t._tab==='Ingresos', isS=t._tab==='Ahorros', isG=t._tab==='Transacciones';
+  const tipo=isI?'i':isS?'s':'g';
+
+  // Populate shared fields
+  document.getElementById('editId').value=t.id||'';
+  document.getElementById('editTab').value=t._tab||'Transacciones';
+  document.getElementById('editType').value=tipo;
+  document.getElementById('editSheetTitle').textContent=isI?'Editar ingreso':isS?'Editar ahorro':'Editar gasto';
+  document.getElementById('editDesc').value=t.descripcion||'';
+  document.getElementById('editFecha').value=isG?(t.fecha_compra||t.fecha_cuota||''):(t.fecha||'');
+  document.getElementById('editNota').value=t.nota||'';
+
+  // Set categories
+  const cats={i:['Salario','Deudas cobradas','Bonos / Extra','Ahorros retirados'],
+    g:['Hogar','Gastos fijos','Alimentación','Ocio','Facturas','Compromisos','Impuestos','Mascotas','Educación','Ropa','Restaurantes','Salidas en pareja','Suscripciones','Regalos / Familia','Tecnología','Viajes','Transporte','Salud','Otros'],
+    s:['Fondo de emergencia','Ahorro fijo quincenal','Alto rendimiento Nu Bank','Viaje','Inversión','General']};
+  const catSel=document.getElementById('editCat');
+  catSel.innerHTML=(cats[tipo]||cats.g).map(c=>`<option value="${c}"${c===(t.subcategoria||t.categoria)?'selected':''}>${c}</option>`).join('');
+
+  // Set amount — for gasto show monto_total_compra (original purchase), for others monto
+  document.getElementById('editMonto').value=isG?(t.monto_total_compra||t.monto_cuota||0):(t.monto||0);
+
+  // Show/hide type-specific fields
+  document.getElementById('editGastoFields').style.display=isG?'':'none';
+  document.getElementById('editDestinoGroup').style.display=isS?'':'none';
+  document.getElementById('editMedioIngresoGroup').style.display=isI?'':'none';
+
+  if(isG){
+    const medSel=document.getElementById('editMedio');
+    Array.from(medSel.options).forEach(o=>{o.selected=o.value===(t.tarjeta||t.medio_pago||'');});
+    document.getElementById('editCuotas').value=t.cuotas_total||1;
+    document.getElementById('editTasa').value=t.tasa_interes?(t.tasa_interes*100).toFixed(1):'1.9';
+    onEditMedioChange();
+    updEditPreview();
+  }
+  if(isS){
+    const dSel=document.getElementById('editDestino');
+    Array.from(dSel.options).forEach(o=>{o.selected=o.value===t.destino;});
+  }
+  if(isI){
+    const mSel=document.getElementById('editMedioIngreso');
+    Array.from(mSel.options).forEach(o=>{o.selected=o.value===t.medio_pago;});
+  }
+
+  document.getElementById('editOverlay').classList.add('on');
+  document.getElementById('editSheet').classList.add('on');
+}
+
+function closeEditSheet(){
+  document.getElementById('editOverlay').classList.remove('on');
+  document.getElementById('editSheet').classList.remove('on');
+}
+
+function onEditMedioChange(){
+  const medio=document.getElementById('editMedio').value;
+  const isCC=isCreditCard(medio);
+  document.getElementById('editCuotasGroup').style.display=isCC?'':'none';
+  if(!isCC){document.getElementById('editCuotas').value='1';document.getElementById('editCqPreview').style.display='none';}
+}
+
+function updEditPreview(){
+  const m=parseFloat(document.getElementById('editMonto').value)||0;
+  const c=parseInt(document.getElementById('editCuotas')?.value)||1;
+  const r=parseFloat(document.getElementById('editTasa')?.value)/100||0;
+  const pv=document.getElementById('editCqPreview');
+  if(!pv||!m||c<2){if(pv)pv.style.display='none';return;}
+  pv.style.display='';
+  const q=calcQ(m,c,r),tot=q*c,int=tot-m;
+  document.getElementById('editCqC').textContent='$'+fmt(Math.round(q));
+  document.getElementById('editCqT').textContent='$'+fmt(Math.round(tot));
+  document.getElementById('editCqI').textContent='$'+fmt(Math.round(int));
+}
+
+async function saveEditRecord(){
+  const id=document.getElementById('editId').value;
+  const tab=document.getElementById('editTab').value;
+  const tipo=document.getElementById('editType').value;
+  if(!id||!tab){toast('Error: registro sin ID','er');return;}
+
+  const desc=document.getElementById('editDesc').value.trim();
+  const cat=document.getElementById('editCat').value;
+  const monto=parseFloat(document.getElementById('editMonto').value)||0;
+  const fecha=document.getElementById('editFecha').value;
+  const nota=document.getElementById('editNota').value.trim();
+  if(!desc||!monto||!fecha){toast('Completa descripción, monto y fecha','er');return;}
+
+  let fields={descripcion:desc,nota};
+
+  if(tipo==='i'){
+    fields={...fields,subcategoria:cat,monto,fecha,
+      mes_cierre:fecha.substring(0,7),
+      medio_pago:document.getElementById('editMedioIngreso').value};
+  } else if(tipo==='s'){
+    fields={...fields,subcategoria:cat,monto,fecha,
+      mes_cierre:fecha.substring(0,7),
+      destino:document.getElementById('editDestino').value};
+  } else {
+    // Gasto — only editable non-structural fields (don't re-generate cuotas chain)
+    const medio=document.getElementById('editMedio').value;
+    const tasa=parseFloat(document.getElementById('editTasa').value)/100||0;
+    fields={...fields,subcategoria:cat,descripcion:desc,
+      monto_total_compra:monto,fecha_compra:fecha,
+      medio_pago:medio,tarjeta:medio,tasa_interes:tasa,nota};
+  }
+
+  try{
+    await api('editRecord',{id,tab,fields});
+    await syncData();
+    closeEditSheet();
+    toast('Registro actualizado ✓','ok');
+  }catch(e){toast('Error: '+e.message,'er');}
+}
 function confDel(){
   closeModal();const t=ST.sel;const multi=t.cuotas_total>1;
   document.getElementById('delSub').textContent=multi?`Esta compra tiene ${t.cuotas_total} cuotas. ¿Qué deseas eliminar?`:'¿Confirmas que deseas eliminar este registro?';
