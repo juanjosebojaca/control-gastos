@@ -1238,7 +1238,15 @@ function renderHome(){
   // Non-CC expenses reduce available money immediately; CC purchases are future obligations
   const nonCCexp=(ST.data.transacciones||[]).filter(t=>{const pm=t.fecha_compra?t.fecha_compra.substring(0,7):t.fecha_cuota;return pm===mes&&t.cuota_numero==1&&!isCreditCard(t.tarjeta||t.medio_pago||'');}).reduce((s,t)=>s+t.monto_total_compra,0);
   const sav=(ST.data.ahorros||[]).filter(t=>t.mes_cierre===mes).reduce((s,t)=>s+t.monto,0);
-  const com=(ST.data.transacciones||[]).filter(t=>t.cuota_numero>1||t.estado==='comprometido').reduce((s,t)=>s+t.monto_cuota,0);
+  // Cuotas futuras = CC purchases assigned to future months (fecha_cuota > current month)
+  // Cuotas futuras = all CC purchases assigned to current month or later
+  // (CC purchases are obligations, not immediate cash outflows)
+  const com=(ST.data.transacciones||[]).filter(t=>{
+    const isCC=isCreditCard(t.tarjeta||t.medio_pago||'');
+    if(!isCC) return false;
+    const fq=t.fecha_cuota||'';
+    return fq>=mes; // current month AND future months
+  }).reduce((s,t)=>s+t.monto_cuota,0);
   const rPrev=(ST.data.resumen||[]).find(x=>x.mes===prevMes(mes))||{};
   const disp=Math.max(0,inc-exp-sav);
 
@@ -1835,7 +1843,12 @@ async function cerrarMes(){if(!confirm('¿Cerrar el mes actual?'))return;try{awa
 // ── DRILL DOWN ────────────────────────────────────────────
 function openDrillDown(type){
   if(type==='cuotas'){
-    const items=(ST.data.transacciones||[]).filter(t=>t.cuota_numero>1||t.estado==='comprometido')
+    const items=(ST.data.transacciones||[]).filter(t=>{
+    const isCC=isCreditCard(t.tarjeta||t.medio_pago||'');
+    if(!isCC) return false;
+    const fq=t.fecha_cuota||'';
+    return fq>=mes;
+  })
       .sort((a,b)=>a.fecha_cuota.localeCompare(b.fecha_cuota));
     const total=items.reduce((s,t)=>s+t.monto_cuota,0);
     document.getElementById('drillTitle').textContent='Cuotas futuras comprometidas';
