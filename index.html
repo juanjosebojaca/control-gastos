@@ -1028,7 +1028,8 @@ function renderTarjetas(){
   const txns=ST.data.transacciones||[];
   if(!ts.length){el.innerHTML=`<div class="empty"><svg viewBox="0 0 24 24" fill="none"><path d="M3 10h18M7 15h1m4 0h1m-7 4h12a3 3 0 003-3V8a3 3 0 00-3-3H6a3 3 0 00-3 3v8a3 3 0 003 3z" stroke-linecap="round" stroke-linejoin="round"/></svg><div class="empty-t">Sin tarjetas</div><div class="empty-s">Sincroniza para ver tus tarjetas.</div></div>`;return;}
   el.innerHTML=ts.filter(t=>t.nombre&&t.id).map(t=>{
-    const cardTxns=(ST.data.transacciones||[]).filter(x=>{const pm=x.fecha_compra?x.fecha_compra.substring(0,7):x.fecha_cuota;return x.tarjeta===t.nombre&&pm===mes&&x.cuota_numero==1;});
+    // Total balance owed = all unpaid cuotas for this card (current + future cycles)
+    const cardTxns=(ST.data.transacciones||[]).filter(x=>x.tarjeta===t.nombre&&(x.fecha_cuota||'')>=mes);
     const balance=cardTxns.reduce((s,x)=>s+(parseFloat(x.monto_cuota)||0),0);
     const daysToPayment=calcDaysTo(now,parseInt(t.dia_pago));
     const badgeClass=daysToPayment<=5?'due':'ok';
@@ -1757,7 +1758,7 @@ function renderNWChart(){
 function openCardModal(tarjeta){
   const now=new Date();
   const mes=`${now.getFullYear()}-${String(now.getMonth()+1).padStart(2,'0')}`;
-  const txns=(ST.data.transacciones||[]).filter(t=>{const pm=t.fecha_compra?t.fecha_compra.substring(0,7):t.fecha_cuota;return t.tarjeta===tarjeta&&pm===mes&&t.cuota_numero==1;});
+  const txns=(ST.data.transacciones||[]).filter(t=>t.tarjeta===tarjeta&&(t.fecha_cuota||'')>=mes);
   const balance=txns.reduce((s,t)=>s+t.monto_cuota,0);
   const t=ST.data.tarjetas?.find(x=>x.nombre===tarjeta)||{};
   document.getElementById('cardModalName').textContent=tarjeta;
@@ -1843,13 +1844,14 @@ async function cerrarMes(){if(!confirm('¿Cerrar el mes actual?'))return;try{awa
 // ── DRILL DOWN ────────────────────────────────────────────
 function openDrillDown(type){
   if(type==='cuotas'){
+    const nowC=new Date();
+    const mesC=`${nowC.getFullYear()}-${String(nowC.getMonth()+1).padStart(2,'0')}`;
     const items=(ST.data.transacciones||[]).filter(t=>{
-    const isCC=isCreditCard(t.tarjeta||t.medio_pago||'');
-    if(!isCC) return false;
-    const fq=t.fecha_cuota||'';
-    return fq>=mes;
-  })
-      .sort((a,b)=>a.fecha_cuota.localeCompare(b.fecha_cuota));
+      const isCC=isCreditCard(t.tarjeta||t.medio_pago||'');
+      if(!isCC) return false;
+      const fq=t.fecha_cuota||'';
+      return fq>=mesC;
+    }).sort((a,b)=>a.fecha_cuota.localeCompare(b.fecha_cuota));
     const total=items.reduce((s,t)=>s+t.monto_cuota,0);
     document.getElementById('drillTitle').textContent='Cuotas futuras comprometidas';
     document.getElementById('drillTitle').style.color='var(--warn-t)';
