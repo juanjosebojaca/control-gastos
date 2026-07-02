@@ -567,7 +567,12 @@ option{background:var(--ink2)}
 
   <!-- INFORMES -->
   <div class="screen" id="sInformes">
-    <div class="sec" style="padding-top:22px"><span class="sec-t">Resumen del mes</span></div>
+    <!-- Month selector tabs -->
+    <div style="padding:16px 22px 0;display:flex;gap:8px;overflow-x:auto;scrollbar-width:none" id="monthTabsRow"></div>
+    <div class="sec" style="padding-top:16px;display:flex;align-items:center;justify-content:space-between">
+      <span class="sec-t">Resumen</span>
+      <span class="sec-a" onclick="openMonthComparison()" style="font-size:11px">Comparar meses →</span>
+    </div>
     <div class="rpt-card" id="rptSum"></div>
     <div class="sec"><span class="sec-t">Gastos por categoría</span></div>
     <div class="rpt-card"><div id="chartG"><div style="color:var(--muted);font-size:12px">Sin datos</div></div></div>
@@ -861,6 +866,16 @@ option{background:var(--ink2)}
 <div class="del-dlg" id="delDlg"><div class="del-bg" onclick="closeDel()"></div><div class="del-box"><div class="del-title">Eliminar</div><div class="del-sub" id="delSub"></div><div class="del-opts" id="delOpts"></div><button class="del-cancel" onclick="closeDel()">Cancelar</button></div></div>
 
 <!-- TOAST -->
+<!-- MONTH COMPARISON MODAL -->
+<div class="modal" id="compModal">
+  <div class="modal-bg" onclick="closeCompModal()"></div>
+  <div class="modal-box" style="max-height:88vh;overflow-y:auto;padding-bottom:calc(24px + var(--safe-b))">
+    <div class="modal-pill"></div>
+    <div style="font-size:18px;font-weight:800;color:var(--cream);letter-spacing:-.5px;margin-bottom:16px" id="compTitle">Comparación</div>
+    <div id="compContent"></div>
+  </div>
+</div>
+
 <div class="toast" id="toast"></div>
 
 <script>
@@ -1385,7 +1400,7 @@ function renderRecent(mes){
     ...(ST.data.transacciones||[]).filter(t=>{const pm=t.fecha_compra?t.fecha_compra.substring(0,7):t.fecha_cuota;return pm===mes&&t.cuota_numero==1;}).map(t=>({...t,_tab:'Transacciones'})),
     ...(ST.data.ingresos||[]).filter(t=>t.mes_cierre===mes).map(t=>({...t,_tab:'Ingresos',tipo:'Ingreso'})),
     ...(ST.data.ahorros||[]).filter(t=>t.mes_cierre===mes).map(t=>({...t,_tab:'Ahorros',tipo:'Ahorro'})),
-  ].sort((a,b)=>new Date(b.fecha_compra||b.fecha)-new Date(a.fecha_compra||a.fecha)).slice(0,6);
+  ].sort((a,b)=>{const da=new Date(a.fecha_compra||a.fecha||'');const db=new Date(b.fecha_compra||b.fecha||'');return db-da;}).slice(0,6);
   const el=document.getElementById('recentList');
   if(!all.length){el.innerHTML=`<div class="empty"><svg viewBox="0 0 24 24" fill="none"><path d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2" stroke-linecap="round" stroke-linejoin="round"/></svg><div class="empty-t">Sin movimientos</div><div class="empty-s">Registra tu primer ingreso o gasto.</div></div>`;return;}
   el.innerHTML=all.map(t=>txnHTML(t)).join('');
@@ -1420,7 +1435,11 @@ function renderHist(){
     ...(ST.data.transacciones||[]).filter(t=>t.fecha_cuota).map(t=>({...t,_tab:'Transacciones',_mes:t.fecha_cuota})),
     ...(ST.data.ingresos||[]).filter(t=>t.mes_cierre).map(t=>({...t,_tab:'Ingresos',tipo:'Ingreso',_mes:t.mes_cierre})),
     ...(ST.data.ahorros||[]).filter(t=>t.mes_cierre).map(t=>({...t,_tab:'Ahorros',tipo:'Ahorro',_mes:t.mes_cierre})),
-  ];
+  ].sort((a,b)=>{
+    const da=new Date(a.fecha_compra||a.fecha||a._mes||'');
+    const db=new Date(b.fecha_compra||b.fecha||b._mes||'');
+    return db-da; // newest first globally before grouping
+  });
   if(!all.length){document.getElementById('histContent').innerHTML=`<div class="empty" style="padding-top:80px"><svg viewBox="0 0 24 24" fill="none"><path d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" stroke-linecap="round" stroke-linejoin="round"/></svg><div class="empty-t">Sin historial</div><div class="empty-s">Tus movimientos aparecerán aquí.</div></div>`;return;}
   const byM={};all.forEach(t=>{
     // Normalize _mes — could be full ISO date or already YYYY-MM
@@ -1430,7 +1449,7 @@ function renderHist(){
   });
   let html='';
   Object.keys(byM).sort((a,b)=>b.localeCompare(a)).forEach(m=>{
-    const items=byM[m].sort((a,b)=>new Date(b.fecha_compra||b.fecha)-new Date(a.fecha_compra||a.fecha));
+    const items=byM[m].sort((a,b)=>{const da=new Date(a.fecha_compra||a.fecha||a._mes||'');const db=new Date(b.fecha_compra||b.fecha||b._mes||'');return db-da;});
     const [y,mo]=m.split('-');
     const nm=new Date(y,mo-1,1).toLocaleDateString('es-CO',{month:'long',year:'numeric'});
     const tot=items.filter(t=>t._tab==='Transacciones').reduce((s,t)=>s+(parseFloat(t.monto_cuota||t.monto)||0),0);
@@ -1440,8 +1459,40 @@ function renderHist(){
 }
 
 // ── INFORMES ─────────────────────────────────────────────────
+// Track selected month for Informes
+let _infMes = null;
+
+function getAvailableMonths(){
+  const all=new Set();
+  (ST.data.transacciones||[]).forEach(t=>{if(t.fecha_cuota)all.add(t.fecha_cuota.substring(0,7));});
+  (ST.data.ingresos||[]).forEach(t=>{if(t.mes_cierre)all.add(t.mes_cierre.substring(0,7));});
+  (ST.data.ahorros||[]).forEach(t=>{if(t.mes_cierre)all.add(t.mes_cierre.substring(0,7));});
+  const now=new Date();
+  const curMes=`${now.getFullYear()}-${String(now.getMonth()+1).padStart(2,'0')}`;
+  all.add(curMes);
+  return Array.from(all).filter(m=>/^\d{4}-\d{2}$/.test(m)).sort().reverse().slice(0,12);
+}
+
+function renderMonthTabs(selected){
+  const months=getAvailableMonths();
+  const row=document.getElementById('monthTabsRow');
+  if(!row)return;
+  row.innerHTML=months.map(m=>{
+    const [y,mo]=m.split('-');
+    const label=new Date(parseInt(y),parseInt(mo)-1,1).toLocaleDateString('es-CO',{month:'short',year:'2-digit'});
+    const active=m===selected;
+    return `<button onclick="selectInfMes('${m}')" style="flex-shrink:0;padding:6px 14px;border-radius:20px;border:1.5px solid ${active?'var(--cream2)':'var(--rim)'};background:${active?'rgba(220,209,187,.1)':'transparent'};color:${active?'var(--cream)':'var(--muted)'};font-family:'Geist',sans-serif;font-size:11px;font-weight:700;cursor:pointer;white-space:nowrap;text-transform:uppercase;letter-spacing:.5px">${label}</button>`;
+  }).join('');
+}
+
+function selectInfMes(m){_infMes=m;renderInf();}
+
 function renderInf(){
-  const now=new Date(),mes=`${now.getFullYear()}-${String(now.getMonth()+1).padStart(2,'0')}`;
+  const now=new Date();
+  const curMes=`${now.getFullYear()}-${String(now.getMonth()+1).padStart(2,'0')}`;
+  if(!_infMes)_infMes=curMes;
+  const mes=_infMes;
+  renderMonthTabs(mes);
   // Compute directly from raw data - same source as History
   const incR=(ST.data.ingresos||[]).filter(t=>t.mes_cierre===mes).reduce((s,t)=>s+t.monto,0);
   const expR=(ST.data.transacciones||[]).filter(t=>{const pm=t.fecha_compra?t.fecha_compra.substring(0,7):t.fecha_cuota;return pm===mes&&t.cuota_numero==1;}).reduce((s,t)=>s+t.monto_total_compra,0);
@@ -1452,7 +1503,15 @@ function renderInf(){
     <div class="rpt-row"><span class="rpt-k">Ingresos</span><span class="rpt-v num" style="color:var(--pos-t)">$${fmt(inc)}</span></div>
     <div class="rpt-row"><span class="rpt-k">Gastos ejecutados</span><span class="rpt-v num" style="color:var(--neg-t)">$${fmt(exp)}</span></div>
     <div class="rpt-row"><span class="rpt-k">Ahorros</span><span class="rpt-v num" style="color:var(--cream2)">$${fmt(sav)}</span></div>
-    <div class="rpt-row"><span class="rpt-k">Disponible real</span><span class="rpt-v num" style="color:var(--cream)">$${fmt(Math.max(0,inc-exp-sav))}</span></div>`;
+    <div class="rpt-row"><span class="rpt-k">Disponible real</span><span class="rpt-v num" style="color:var(--cream)">$${fmt(Math.max(0,inc-exp-sav))}</span></div>
+    <div style="margin-top:16px">
+      <div style="font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:1.2px;color:var(--muted);margin-bottom:10px">Ingresos vs Gastos vs Ahorros</div>
+      ${(()=>{const total=inc||1;const vals=[{l:'Ingresos',v:inc,c:'var(--pos-t)'},{l:'Gastos',v:exp,c:'var(--neg-t)'},{l:'Ahorros',v:sav,c:'var(--cream2)'}];return vals.map(x=>`<div style="display:flex;align-items:center;gap:8px;margin-bottom:7px"><div style="font-size:11px;color:var(--muted2);width:58px">${x.l}</div><div style="flex:1;height:6px;background:var(--ink4);border-radius:3px;overflow:hidden"><div style="height:100%;width:${Math.round((x.v/total)*100)}%;background:${x.c};border-radius:3px"></div></div><div style="font-size:11px;font-weight:700;color:var(--muted2);width:56px;text-align:right;font-variant-numeric:tabular-nums">$${fmtK(x.v)}</div></div>`).join('');})()}
+    </div>
+    <div style="margin-top:12px">
+      <button onclick="cerrarMes()" style="width:100%;padding:11px;border-radius:11px;background:var(--ink4);border:1px solid var(--rim2);color:var(--cream2);font-family:'Geist',sans-serif;font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.8px;cursor:pointer">Cerrar mes y mover disponible a ahorros</button>
+    </div>
+    `;
   const txns=(ST.data.transacciones||[]).filter(t=>{const pm=t.fecha_compra?t.fecha_compra.substring(0,7):t.fecha_cuota;return pm===mes&&t.cuota_numero==1;});
   const bC={};txns.forEach(t=>{bC[t.subcategoria]=(bC[t.subcategoria]||0)+(parseFloat(t.monto_cuota)||0);});
   _barsSource=txns;
@@ -1867,7 +1926,65 @@ async function saveAutos(){
   try{if(e1)await api('updateAhorroAuto',{subcategoria:'Fondo de emergencia',nuevo_monto:parseFloat(e1)});if(e2)await api('updateAhorroAuto',{subcategoria:'Ahorro fijo quincenal',nuevo_monto:parseFloat(e2)});toast('Guardado','ok');}
   catch(e){toast('Error','er');}
 }
-async function cerrarMes(){if(!confirm('¿Cerrar el mes actual?'))return;try{await api('cerrarMes',{});await syncData();toast('Mes cerrado','ok');}catch(e){toast('Error','er');}}
+async function cerrarMes(){await cerrarMesAuto();}
+
+// ── MONTHLY CLOSE ────────────────────────────────────────────
+async function cerrarMesAuto(){
+  const now=new Date();
+  const mes=`${now.getFullYear()}-${String(now.getMonth()+1).padStart(2,'0')}`;
+  const inc=(ST.data.ingresos||[]).filter(t=>t.mes_cierre===mes).reduce((s,t)=>s+t.monto,0);
+  const exp=(ST.data.transacciones||[]).filter(t=>{const pm=t.fecha_compra?t.fecha_compra.substring(0,7):t.fecha_cuota;return pm===mes&&t.cuota_numero==1&&!isCreditCard(t.tarjeta||t.medio_pago||'');}).reduce((s,t)=>s+t.monto_total_compra,0);
+  const sav=(ST.data.ahorros||[]).filter(t=>t.mes_cierre===mes).reduce((s,t)=>s+t.monto,0);
+  const disponible=Math.round(inc-exp-sav);
+  if(disponible<=0){toast('No hay saldo disponible para cerrar','');return;}
+  if(!confirm(`¿Cerrar ${mes} y mover $${fmt(disponible)} a ahorros?`))return;
+  // Last day of current month
+  const lastDay=new Date(now.getFullYear(),now.getMonth()+1,0);
+  const fechaCierre=`${lastDay.getFullYear()}-${String(lastDay.getMonth()+1).padStart(2,'0')}-${String(lastDay.getDate()).padStart(2,'0')}`;
+  try{
+    await api('addAhorro',{subcategoria:'General',destino:'General',monto:disponible,fecha:fechaCierre,nota:'Cierre automático '+mes,automatico:'TRUE'});
+    await syncData();
+    toast('Mes cerrado. $'+fmtK(disponible)+' movidos a ahorros','ok');
+  }catch(e){toast('Error: '+e.message,'er');}
+}
+
+// ── MONTH COMPARISON ─────────────────────────────────────────
+function openMonthComparison(){
+  const now=new Date();
+  const mesA=`${now.getFullYear()}-${String(now.getMonth()+1).padStart(2,'0')}`;
+  const [y,m]=mesA.split('-').map(Number);
+  const prevDate=new Date(y,m-2,1);
+  const mesB=`${prevDate.getFullYear()}-${String(prevDate.getMonth()+1).padStart(2,'0')}`;
+  const calc=(mes)=>({
+    inc:(ST.data.ingresos||[]).filter(t=>t.mes_cierre===mes).reduce((s,t)=>s+t.monto,0),
+    exp:(ST.data.transacciones||[]).filter(t=>{const pm=t.fecha_compra?t.fecha_compra.substring(0,7):t.fecha_cuota;return pm===mes&&t.cuota_numero==1;}).reduce((s,t)=>s+t.monto_total_compra,0),
+    sav:(ST.data.ahorros||[]).filter(t=>t.mes_cierre===mes).reduce((s,t)=>s+t.monto,0),
+  });
+  const a=calc(mesA),b=calc(mesB);
+  const pct=(n,o)=>o===0?'—':(((n-o)/o)*100).toFixed(0);
+  const arrow=(n,o,good)=>{const p=n-o;if(p===0)return '→';return p>0?(good?'▲':'▲'):(good?'▼':'▼');};
+  const row=(label,va,vb,good)=>{
+    const p=parseFloat(pct(va,vb));const up=va>=vb;
+    const col=isNaN(p)?'var(--muted)':(up===good)?'var(--pos-t)':'var(--neg-t)';
+    return `<div style="display:flex;align-items:center;justify-content:space-between;padding:12px 0;border-bottom:1px solid var(--rim)">
+      <div style="font-size:12px;color:var(--muted);font-weight:600;width:80px">${label}</div>
+      <div style="text-align:center;flex:1"><div style="font-size:11px;color:var(--muted)">${mesB}</div><div style="font-size:16px;font-weight:800;color:var(--cream);font-variant-numeric:tabular-nums">$${fmtK(vb)}</div></div>
+      <div style="text-align:center;width:52px;font-size:13px;font-weight:800;color:${col}">${isNaN(p)?'—':(up?'▲':'▼')+Math.abs(p)+'%'}</div>
+      <div style="text-align:center;flex:1"><div style="font-size:11px;color:var(--muted)">${mesA}</div><div style="font-size:16px;font-weight:800;color:var(--cream);font-variant-numeric:tabular-nums">$${fmtK(va)}</div></div>
+    </div>`;
+  };
+  const disp=(d)=>Math.max(0,d.inc-d.exp-d.sav);
+  const lblB=new Date(parseInt(mesB.split('-')[0]),parseInt(mesB.split('-')[1])-1,1).toLocaleDateString('es-CO',{month:'long'});
+  const lblA=new Date(parseInt(mesA.split('-')[0]),parseInt(mesA.split('-')[1])-1,1).toLocaleDateString('es-CO',{month:'long'});
+  document.getElementById('compTitle').textContent=`${lblB.charAt(0).toUpperCase()+lblB.slice(1)} vs ${lblA.charAt(0).toUpperCase()+lblA.slice(1)}`;
+  document.getElementById('compContent').innerHTML=
+    row('Ingresos',a.inc,b.inc,true)+
+    row('Gastos',a.exp,b.exp,false)+
+    row('Ahorros',a.sav,b.sav,true)+
+    row('Disponible',disp(a),disp(b),true);
+  document.getElementById('compModal').classList.add('on');
+}
+function closeCompModal(){document.getElementById('compModal').classList.remove('on');}
 
 // ── UTILS ────────────────────────────────────────────────────
 // ── DRILL DOWN ────────────────────────────────────────────
